@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pathfinder AI - Your Career Roadmap</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Tailwind gray-900 */
+            color: #F9FAFB; /* Tailwind gray-50 */
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1F2937; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+
+        #loading-screen, #api-loading-overlay { transition: opacity 0.5s ease-out; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner {
+            border-color: #4f46e5 transparent #4f46e5 transparent; /* indigo-600 */
+            animation: spin 1.2s linear infinite;
+            border-width: 4px;
+            border-style: solid;
+        }
+        #questionnaire-modal {
+            background-color: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(8px);
+            transition: opacity 0.3s ease-in-out;
+        }
+        .milestone-group {
+            position: relative; padding-left: 40px; padding-bottom: 2rem;
+        }
+        .milestone-group::before {
+            content: ''; position: absolute; left: 11px; top: 20px;
+            bottom: 0; width: 2px; background-color: #374151; /* gray-700 */
+        }
+        .milestone-group:last-child::before { display: none; }
+        .milestone-title::before {
+            content: ''; position: absolute; left: 4px; top: 50%;
+            transform: translateY(-50%); width: 16px; height: 16px;
+            border-radius: 9999px; background-color: #111827;
+            border: 2px solid #0891B2; /* cyan-600 */
+        }
+        .skill-node { position: relative; cursor: pointer; transition: all 0.2s ease-in-out; }
+        .skill-node::before {
+            content: ''; position: absolute; left: -33px; top: 50%;
+            transform: translateY(-50%); width: 10px; height: 10px;
+            border-radius: 9999px; background-color: #4B5563; /* gray-600 */
+            border: 2px solid #111827; transition: all 0.2s ease-in-out;
+        }
+        .skill-node.completed::before { background-color: #10B981; } /* emerald-500 */
+        .skill-node:hover::before { transform: translateY(-50%) scale(1.5); }
+        #details-panel { transition: transform 0.3s ease-in-out; }
+        #details-panel.hidden { transform: translateX(100%); }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+
+    <!-- Initial Loading Screen -->
+    <div id="loading-screen" class="fixed inset-0 bg-gray-900 flex flex-col justify-center items-center z-50">
+        <div class="spinner w-12 h-12 rounded-full"></div>
+        <p class="mt-4 text-lg text-gray-300">Pathfinder is waking up...</p>
+    </div>
+
+    <!-- API Loading Overlay -->
+    <div id="api-loading-overlay" class="hidden fixed inset-0 bg-gray-900/80 flex flex-col justify-center items-center z-40">
+        <div class="spinner w-12 h-12 rounded-full"></div>
+        <p class="mt-4 text-lg text-gray-300">AI is generating your personalized roadmap...</p>
+    </div>
+
+    <!-- Questionnaire Modal -->
+    <div id="questionnaire-modal" class="hidden fixed inset-0 flex justify-center items-center z-30 p-4">
+        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-lg border border-gray-700">
+            <h2 class="text-3xl font-bold text-white mb-2">Create Your Career Map</h2>
+            <p class="text-gray-400 mb-6">Answer a few questions to have our AI generate a personalized roadmap.</p>
+            <form id="questionnaire-form">
+                <div class="mb-4">
+                    <label for="career-goal" class="block text-sm font-medium text-gray-300 mb-2">Desired Career Goal</label>
+                    <input type="text" id="career-goal" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:outline-none" placeholder="e.g., 'Cloud Engineer' or 'Game Developer'" required>
+                </div>
+                <div class="mb-6">
+                    <label for="experience-level" class="block text-sm font-medium text-gray-300 mb-2">Current Experience Level</label>
+                    <select id="experience-level" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                        <option value="Beginner (just starting out)">Beginner</option>
+                        <option value="Intermediate (I know the basics)">Intermediate</option>
+                        <option value="Advanced (I have work experience)">Advanced</option>
+                    </select>
+                </div>
+                <button type="submit" id="generate-btn" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg">
+                    Generate My Roadmap
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application UI -->
+    <div id="app" class="flex h-screen w-full">
+        <main id="main-content" class="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto hidden">
+            <header id="main-header" class="mb-8"></header>
+            <div id="roadmap-container"></div>
+        </main>
+        <aside id="details-panel" class="hidden fixed top-0 right-0 h-full w-full max-w-md bg-gray-800 shadow-2xl p-6 border-l-2 border-gray-700 overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="details-title" class="text-2xl font-bold text-white"></h2>
+                <button id="close-panel-btn" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            <div id="details-content">
+                <p id="details-description" class="text-gray-300 mb-6"></p>
+                <h3 class="text-xl font-semibold text-white mb-3">Suggested Resources</h3>
+                <p class="text-sm text-gray-400 mb-3">(Note: These are AI-generated suggestions and not direct links.)</p>
+                <ul id="details-resources" class="space-y-3 list-disc list-inside text-cyan-400"></ul>
+            </div>
+            <div class="mt-8 pt-6 border-t border-gray-700">
+                <button id="complete-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg transition-colors"></button>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        // <!-- WARNING: Storing API keys in frontend code is insecure and should not be done in a production environment. -->
+        // <!-- For this prototype, replace "YOUR_GEMINI_API_KEY" with your actual key. -->
+        const apiKey = ""; 
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+        // --- STATE ---
+        let currentRoadmap = null;
+        let activeSkill = null;
+
+        // --- DOM ELEMENTS ---
+        const loadingScreen = document.getElementById('loading-screen');
+        const apiLoadingOverlay = document.getElementById('api-loading-overlay');
+        const questionnaireModal = document.getElementById('questionnaire-modal');
+        const questionnaireForm = document.getElementById('questionnaire-form');
+        const generateBtn = document.getElementById('generate-btn');
+        const mainContent = document.getElementById('main-content');
+        const mainHeader = document.getElementById('main-header');
+        const roadmapContainer = document.getElementById('roadmap-container');
+        const detailsPanel = document.getElementById('details-panel');
+        const detailsTitle = document.getElementById('details-title');
+        const detailsDescription = document.getElementById('details-description');
+        const detailsResources = document.getElementById('details-resources');
+        const closePanelBtn = document.getElementById('close-panel-btn');
+        const completeBtn = document.getElementById('complete-btn');
+
+        // --- API INTERACTION ---
+        async function callGeminiAPI(goal, experience) {
+            const systemInstruction = {
+                role: "system",
+                parts: [{
+                    text: `You are an expert career planning AI named Pathfinder. Your goal is to generate a detailed, step-by-step career roadmap. The user will provide their desired career and their experience level. You MUST respond with ONLY a valid JSON object that strictly follows this structure, with no extra text or markdown:
+                        {
+                          "name": "Career Name",
+                          "milestones": [
+                            {
+                              "title": "Phase 1: Title",
+                              "skills": [
+                                { "id": "unique-id-1", "title": "Skill Title", "description": "Brief description.", "resources": [{ "name": "Resource suggestion 1" }, { "name": "Resource suggestion 2" }], "status": "incomplete" },
+                                { "id": "unique-id-2", "title": "Skill Title", "description": "Brief description.", "resources": [{ "name": "Resource suggestion 1" }], "status": "incomplete" }
+                              ]
+                            }
+                          ]
+                        }
+                        - The 'id' for each skill must be a unique, simple string (e.g., 'fe-html', 'ds-python').
+                        - The 'resources' array should contain AI-generated suggestions for learning, not real URLs.`
+                }]
+            };
+
+            const userPrompt = {
+                role: "user",
+                parts: [{ text: `Generate a roadmap for a '${goal}' with a '${experience}' experience level.` }]
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [userPrompt],
+                        systemInstruction: systemInstruction,
+                        generationConfig: {
+                           responseMimeType: "application/json",
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                const jsonText = result.candidates[0].content.parts[0].text;
+                return JSON.parse(jsonText);
+
+            } catch (error) {
+                console.error("Error calling Gemini API:", error);
+                alert("Failed to generate roadmap. Please check your API key and network connection. " + error.message);
+                return null;
+            }
+        }
+
+        // --- RENDER FUNCTIONS ---
+        function renderRoadmap(roadmapData) {
+            currentRoadmap = roadmapData;
+            mainHeader.innerHTML = `
+                <h1 class="text-4xl font-bold text-white">${roadmapData.name} Roadmap</h1>
+                <p class="text-lg text-gray-400 mt-1">Your AI-generated path to becoming a ${roadmapData.name}.</p>`;
+
+            roadmapContainer.innerHTML = '';
+            roadmapData.milestones.forEach(milestone => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'milestone-group';
+                groupDiv.innerHTML = `
+                    <h3 class="milestone-title text-2xl font-bold mb-6 relative text-cyan-400">${milestone.title}</h3>
+                    <div class="space-y-4">
+                        ${milestone.skills.map(skill => `
+                            <div class="skill-node ${skill.status === 'completed' ? 'completed' : ''}" data-skill-id="${skill.id}">
+                                <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-cyan-500 hover:bg-gray-700 transition-colors">
+                                    <p class="text-lg font-semibold text-white">${skill.title}</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                roadmapContainer.appendChild(groupDiv);
+            });
+        }
+        
+        function findSkillById(skillId) {
+            for (const milestone of currentRoadmap.milestones) {
+                const found = milestone.skills.find(s => s.id === skillId);
+                if (found) return found;
+            }
+            return null;
+        }
+
+        function renderDetailsPanel(skill) {
+            activeSkill = skill;
+            detailsTitle.textContent = skill.title;
+            detailsDescription.textContent = skill.description || "No description available.";
+            detailsResources.innerHTML = skill.resources?.map(res => `<li>${res.name}</li>`).join('') || '<li>No resources suggested by AI.</li>';
+            updateCompleteButton(skill.status);
+            detailsPanel.classList.remove('hidden');
+        }
+
+        function updateCompleteButton(status) {
+             if (status === 'completed') {
+                completeBtn.textContent = 'Mark as Incomplete';
+                completeBtn.className = 'w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-lg transition-colors';
+            } else {
+                completeBtn.textContent = 'Mark as Completed';
+                completeBtn.className = 'w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg transition-colors';
+            }
+        }
+        
+        // --- EVENT HANDLERS ---
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            if (!apiKey) {
+                alert("Please add your Gemini API Key to the script.");
+                return;
+            }
+            const careerGoal = document.getElementById('career-goal').value;
+            const experienceLevel = document.getElementById('experience-level').value;
+
+            apiLoadingOverlay.classList.remove('hidden');
+            generateBtn.disabled = true;
+            generateBtn.textContent = "Generating...";
+
+            const personalizedRoadmap = await callGeminiAPI(careerGoal, experienceLevel);
+
+            apiLoadingOverlay.classList.add('hidden');
+            generateBtn.disabled = false;
+            generateBtn.textContent = "Generate My Roadmap";
+
+            if (personalizedRoadmap) {
+                renderRoadmap(personalizedRoadmap);
+                questionnaireModal.classList.add('opacity-0', 'pointer-events-none');
+                mainContent.classList.remove('hidden');
+            }
+        }
+        
+        function handleSkillClick(e) {
+            const skillNode = e.target.closest('.skill-node');
+            if (skillNode) {
+                const skillId = skillNode.dataset.skillId;
+                const skill = findSkillById(skillId);
+                if (skill) renderDetailsPanel(skill);
+            }
+        }
+
+        function handleCompleteClick() {
+            if (!activeSkill) return;
+            activeSkill.status = activeSkill.status === 'completed' ? 'incomplete' : 'completed';
+            const node = document.querySelector(`[data-skill-id="${activeSkill.id}"]`);
+            if (node) {
+                node.classList.toggle('completed');
+            }
+            updateCompleteButton(activeSkill.status);
+        }
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                loadingScreen.classList.add('opacity-0', 'pointer-events-none');
+                questionnaireModal.classList.remove('hidden');
+            }, 1000);
+
+            questionnaireForm.addEventListener('submit', handleFormSubmit);
+            roadmapContainer.addEventListener('click', handleSkillClick);
+            closePanelBtn.addEventListener('click', () => detailsPanel.classList.add('hidden'));
+            completeBtn.addEventListener('click', handleCompleteClick);
+        });
+    </script>
+</body>
+</html>
+

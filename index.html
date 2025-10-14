@@ -3,233 +3,611 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pathfinder AI - Your Career Roadmap</title>
+    <title>Smart Raasta - Your Career Roadmap</title>
+    <!-- SEO: Meta description for better search engine visibility. -->
+    <meta name="description" content="Smart Raasta generates a personalized career roadmap for the Pakistani job market. Get a step-by-step guide with milestones, skills, and resources tailored to your goals.">
+    <!-- Favicon: Link to a placeholder favicon. -->
+    <link id="favicon" rel="icon" href="https://placehold.co/32x32/14b8a6/FFFFFF?text=S" type="image/png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2pdf.js for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* --- CSS VARIABLES & THEME --- */
+        :root {
+            --bg-primary: #030712;
+            --bg-secondary: #111827;
+            --bg-card: #111827;
+            --text-primary: #F9FAFB;
+            --text-secondary: #9ca3af;
+            --border-primary: #1f2937;
+            --border-secondary: #374151;
+            --accent-primary: #14b8a6;
+            --accent-primary-hover: #0d9488;
+            --accent-secondary: #D97706;
+            --accent-secondary-hover: #F59E0B;
+            /* Header color now matches footer */
+            --header-bg: rgba(17, 24, 39, 0.5); 
+            --header-bg-scrolled: rgba(17, 24, 39, 0.8);
+        }
+
+        html.light-mode {
+            --bg-primary: #f9fafb;
+            --bg-secondary: #f3f4f6;
+            --bg-card: #ffffff;
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --border-primary: #e5e7eb;
+            --border-secondary: #d1d5db;
+             /* Header color now matches footer */
+            --header-bg: rgba(243, 244, 246, 0.5);
+            --header-bg-scrolled: rgba(243, 244, 246, 0.8);
+        }
+
+        /* --- GENERAL STYLES & LAYOUT --- */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #111827; /* Tailwind gray-900 */
-            color: #F9FAFB; /* Tailwind gray-50 */
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            background-image: 
+                linear-gradient(rgba(3, 7, 18, 0.98), rgba(3, 7, 18, 0.98)),
+                url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23111827' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2-H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            transition: background-color 0.3s, color 0.3s;
         }
+        
+        html.light-mode body {
+             background-image: 
+                linear-gradient(rgba(249, 250, 251, 0.98), rgba(249, 250, 251, 0.98)),
+                url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e5e7eb' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2-H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        
+        /* --- SCROLLBAR STYLES --- */
         ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #1F2937; }
-        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        ::-webkit-scrollbar-thumb { background: var(--border-secondary); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
 
-        #loading-screen, #api-loading-overlay { transition: opacity 0.5s ease-out; }
+        /* --- LOADING & OVERLAYS --- */
+        #loading-screen, #api-loading-overlay { transition: opacity 0.5s ease-out; background-color: var(--bg-primary);}
         @keyframes spin { to { transform: rotate(360deg); } }
         .spinner {
-            border-color: #4f46e5 transparent #4f46e5 transparent; /* indigo-600 */
+            border-color: var(--accent-primary) transparent var(--accent-primary) transparent;
             animation: spin 1.2s linear infinite;
             border-width: 4px;
             border-style: solid;
         }
-        #questionnaire-modal {
-            background-color: rgba(17, 24, 39, 0.8);
+        #api-loading-progress-bar { transition: width 0.4s ease-out; }
+        #loading-message-container { transition: opacity 0.3s ease-in-out; }
+
+        /* --- UI COMPONENTS --- */
+        #questionnaire-modal-overlay {
+            background-color: rgba(3, 7, 18, 0.8);
             backdrop-filter: blur(8px);
             transition: opacity 0.3s ease-in-out;
         }
-        .milestone-group {
-            position: relative; padding-left: 40px; padding-bottom: 2rem;
+        
+        .skill-card {
+            transition: all 0.2s ease-in-out;
+            border: 1px solid var(--border-primary);
+            background-color: var(--bg-card);
+            min-height: 7rem; /* Set min-height for consistent card size */
         }
-        .milestone-group::before {
-            content: ''; position: absolute; left: 11px; top: 20px;
-            bottom: 0; width: 2px; background-color: #374151; /* gray-700 */
+        .skill-card:not(.completed):hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-primary);
+            box-shadow: 0 10px 15px -3px rgba(20, 184, 166, 0.1), 0 4px 6px -2px rgba(20, 184, 166, 0.05);
         }
-        .milestone-group:last-child::before { display: none; }
-        .milestone-title::before {
-            content: ''; position: absolute; left: 4px; top: 50%;
-            transform: translateY(-50%); width: 16px; height: 16px;
-            border-radius: 9999px; background-color: #111827;
-            border: 2px solid #0891B2; /* cyan-600 */
+        .skill-card.completed { border-color: var(--accent-secondary); }
+        .skill-card.completed:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-secondary-hover);
+            box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.1), 0 4px 6px -2px rgba(245, 158, 11, 0.05);
         }
-        .skill-node { position: relative; cursor: pointer; transition: all 0.2s ease-in-out; }
-        .skill-node::before {
-            content: ''; position: absolute; left: -33px; top: 50%;
-            transform: translateY(-50%); width: 10px; height: 10px;
-            border-radius: 9999px; background-color: #4B5563; /* gray-600 */
-            border: 2px solid #111827; transition: all 0.2s ease-in-out;
+        .status-dot { 
+            width: 0.75rem; 
+            height: 0.75rem;
+            border-radius: 9999px;
+            flex-shrink: 0;
         }
-        .skill-node.completed::before { background-color: #10B981; } /* emerald-500 */
-        .skill-node:hover::before { transform: translateY(-50%) scale(1.5); }
-        #details-panel { transition: transform 0.3s ease-in-out; }
-        #details-panel.hidden { transform: translateX(100%); }
+        .skill-card.completed .status-dot { background-color: var(--accent-secondary); }
+        #progress-bar-inner { transition: width 0.5s ease-out; }
+
+        /* --- MODAL STYLES --- */
+        #skill-modal-overlay, #completion-modal-overlay { transition: opacity 0.3s ease-in-out; }
+        #skill-modal-content, #completion-modal-content { transition: all 0.3s ease-in-out; }
+        #skill-modal-overlay.open, #completion-modal-overlay.open { opacity: 1; pointer-events: auto; }
+        #skill-modal-overlay.open #skill-modal-content,
+        #completion-modal-overlay.open #completion-modal-content {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        /* --- ANIMATIONS --- */
+        .checkmark__circle { animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards; }
+        .checkmark { animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both; }
+        .checkmark__check { animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards; }
+        @keyframes stroke { 100% { stroke-dashoffset: 0; } }
+        @keyframes scale { 0%, 100% { transform: none; } 50% { transform: scale3d(1.1, 1.1, 1); } }
+        @keyframes fill { 100% { box-shadow: inset 0px 0px 0px 40px var(--accent-primary); } }
+        
+        /* New animation for smooth transitions */
+        @keyframes fadeInScaleUp {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in-scale-up {
+            animation: fadeInScaleUp 0.4s ease-out forwards;
+        }
+
+        /* --- HEADER & THEME TOGGLE --- */
+        #main-header { 
+            transition: transform 0.3s ease-in-out, background-color 0.3s ease-in-out;
+            background-color: var(--header-bg);
+            backdrop-filter: blur(4px);
+        }
+        #main-header.scrolled {
+            background-color: var(--header-bg-scrolled);
+            backdrop-filter: blur(8px);
+        }
+        #main-header.hidden-header { transform: translateY(-100%); }
+        #theme-toggle svg { transition: transform 0.3s ease-in-out; position: absolute; }
+        .sun-icon { transform: scale(1) rotate(0deg); }
+        .moon-icon { transform: scale(0) rotate(-90deg); }
+        html.light-mode .sun-icon { transform: scale(0) rotate(90deg); }
+        html.light-mode .moon-icon { transform: scale(1) rotate(0deg); }
     </style>
 </head>
-<body class="overflow-x-hidden">
+<body class="overflow-hidden h-screen">
+    
+    <!-- =================================================================== -->
+    <!-- SECTION: Loading Screens & Overlays                                 -->
+    <!-- =================================================================== -->
 
-    <!-- Initial Loading Screen -->
-    <div id="loading-screen" class="fixed inset-0 bg-gray-900 flex flex-col justify-center items-center z-50">
+    <!-- Initial page load screen -->
+    <div id="loading-screen" class="fixed inset-0 flex flex-col justify-center items-center z-50">
         <div class="spinner w-12 h-12 rounded-full"></div>
-        <p class="mt-4 text-lg text-gray-300">Pathfinder is waking up...</p>
+        <p class="mt-4 text-lg text-gray-300">Smart Raasta is waking up...</p>
     </div>
 
-    <!-- API Loading Overlay -->
-    <div id="api-loading-overlay" class="hidden fixed inset-0 bg-gray-900/80 flex flex-col justify-center items-center z-40">
-        <div class="spinner w-12 h-12 rounded-full"></div>
-        <p class="mt-4 text-lg text-gray-300">AI is generating your personalized roadmap...</p>
-    </div>
-
-    <!-- Questionnaire Modal -->
-    <div id="questionnaire-modal" class="hidden fixed inset-0 flex justify-center items-center z-30 p-4">
-        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-lg border border-gray-700">
-            <h2 class="text-3xl font-bold text-white mb-2">Create Your Career Map</h2>
-            <p class="text-gray-400 mb-6">Answer a few questions to have our AI generate a personalized roadmap.</p>
-            <form id="questionnaire-form">
-                <div class="mb-4">
-                    <label for="career-goal" class="block text-sm font-medium text-gray-300 mb-2">Desired Career Goal</label>
-                    <input type="text" id="career-goal" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:outline-none" placeholder="e.g., 'Cloud Engineer' or 'Game Developer'" required>
-                </div>
-                <div class="mb-6">
-                    <label for="experience-level" class="block text-sm font-medium text-gray-300 mb-2">Current Experience Level</label>
-                    <select id="experience-level" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:outline-none">
-                        <option value="Beginner (just starting out)">Beginner</option>
-                        <option value="Intermediate (I know the basics)">Intermediate</option>
-                        <option value="Advanced (I have work experience)">Advanced</option>
-                    </select>
-                </div>
-                <button type="submit" id="generate-btn" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg">
-                    Generate My Roadmap
-                </button>
-            </form>
+    <!-- API loading overlay with progress bar and animated messages -->
+    <div id="api-loading-overlay" class="hidden fixed inset-0 bg-opacity-80 flex justify-center items-center z-40 p-4" style="background-color: var(--bg-primary);">
+        <div class="w-full max-w-md text-center">
+            <div class="spinner w-12 h-12 rounded-full mx-auto"></div>
+            <p id="loading-message-container" class="mt-4 text-lg h-6"></p>
+            <div class="w-full bg-gray-700 rounded-full h-2.5 mt-4">
+                <div id="api-loading-progress-bar" class="bg-teal-500 h-2.5 rounded-full" style="width: 0%"></div>
+            </div>
+            <p id="api-loading-progress-text" class="text-sm text-gray-400 mt-2">0%</p>
         </div>
     </div>
 
-    <!-- Main Application UI -->
-    <div id="app" class="flex h-screen w-full">
-        <main id="main-content" class="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto hidden">
-            <header id="main-header" class="mb-8"></header>
-            <div id="roadmap-container"></div>
-        </main>
-        <aside id="details-panel" class="hidden fixed top-0 right-0 h-full w-full max-w-md bg-gray-800 shadow-2xl p-6 border-l-2 border-gray-700 overflow-y-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h2 id="details-title" class="text-2xl font-bold text-white"></h2>
-                <button id="close-panel-btn" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+    <!-- User Input Questionnaire Modal -->
+    <div id="questionnaire-modal-overlay" class="hidden fixed inset-0 flex justify-center items-center z-30 p-4">
+        <div class="w-full max-w-4xl bg-gray-900 rounded-xl shadow-2xl overflow-hidden md:grid md:grid-cols-2 border border-gray-800">
+            <div class="hidden md:flex flex-col justify-center p-8 lg:p-12 bg-gray-800" style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Cg fill=%22%232d3748%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%221%22/%3E%3Ccircle cx=%2210%22 cy=%2210%22 r=%221%22/%3E%3Ccircle cx=%2290%22 cy=%2210%22 r=%221%22/%3E%3Ccircle cx=%2210%22 cy=%2290%22 r=%221%22/%3E%3Ccircle cx=%2290%22 cy=%2290%22 r=%221%22/%3E%3C/g%3E%3C/svg%3E'); background-size: cover;">
+                <h2 class="text-3xl md:text-4xl font-bold text-white">Smart Raasta</h2>
+                <p class="mt-4 text-gray-400">Made with pride in Pakistan to help Pakistan’s youth find their Smart Raasta.</p>
             </div>
-            <div id="details-content">
-                <p id="details-description" class="text-gray-300 mb-6"></p>
-                <h3 class="text-xl font-semibold text-white mb-3">Suggested Resources</h3>
-                <p class="text-sm text-gray-400 mb-3">(Note: These are AI-generated suggestions and not direct links.)</p>
-                <ul id="details-resources" class="space-y-3 list-disc list-inside text-cyan-400"></ul>
+            <div class="p-6 sm:p-8">
+                <h2 class="text-2xl sm:text-3xl font-bold text-white mb-2" data-translate-key="questionnaire_title">Design Your Pakistan-Specific Roadmap</h2>
+                <p class="text-gray-400 mb-6" data-translate-key="questionnaire_subtitle">Powered by AI designed for Pakistan’s job market — your personalized career blueprint starts here..</p>
+                <form id="questionnaire-form">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="career-goal" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="career_goal_label">Choose Your Professional Domain</label>
+                            <input type="text" id="career-goal" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="e.g., Software Development, Digital Marketing" required>
+                        </div>
+                        <div>
+                            <label for="user-interests" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="interests_label">Specific Interests (Optional)</label>
+                            <input type="text" id="user-interests" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="e.g., AI, Cybersecurity, SEO, UI/UX">
+                        </div>
+                        <div>
+                            <label for="education-level" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="education_label">Highest Education</label>
+                            <select id="education-level" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                                <option>Matric / Intermediate</option><option selected>Bachelor's Degree</option><option>Master's Degree</option><option>PhD</option><option>Vocational Training / Diploma</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="location" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="province_label">Your Province</label>
+                            <select id="location" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                                <option>Punjab</option><option>Sindh</option><option>Khyber Pakhtunkhwa</option><option>Balochistan</option><option>Gilgit-Baltistan</option><option>Azad Kashmir</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" id="generate-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg mt-6" data-translate-key="generate_button">Shape My Future</button>
+                </form>
             </div>
-            <div class="mt-8 pt-6 border-t border-gray-700">
-                <button id="complete-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg transition-colors"></button>
-            </div>
-        </aside>
+        </div>
     </div>
 
+    <!-- =================================================================== -->
+    <!-- SECTION: Main Application                                           -->
+    <!-- =================================================================== -->
+    <div id="app" class="flex flex-col h-screen w-full">
+        <main id="main-content" class="flex-1 flex flex-col overflow-hidden hidden">
+            <!-- Main header with theme and language toggles -->
+            <header id="main-header" class="fixed top-0 left-0 right-0 p-4 sm:px-6 z-10">
+                <div class="flex justify-between items-center max-w-7xl mx-auto">
+                    <h1 class="text-xl font-bold">Smart Raasta</h1>
+                    <div class="flex items-center gap-4">
+                        <button id="theme-toggle" class="relative w-12 h-6 rounded-full bg-gray-700 flex items-center p-1 transition-colors">
+                            <div class="absolute w-6 h-6 flex items-center justify-center">
+                               <svg class="w-4 h-4 text-yellow-400 sun-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                            </div>
+                            <div class="absolute w-6 h-6 flex items-center justify-center">
+                                <svg class="w-4 h-4 text-gray-400 moon-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                            </div>
+                        </button>
+                        <button id="lang-toggle" class="bg-gray-700 text-white font-semibold py-1 px-3 rounded-full text-sm w-12 text-center">EN</button>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Scrollable content area for the roadmap -->
+            <div id="roadmap-content" class="flex-grow overflow-y-auto pt-20">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 pb-8">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center flex-wrap gap-4 mb-8">
+                        <div id="progress-container" class="w-full sm:flex-1"></div>
+                        <div id="pdf-controls" class="w-full sm:w-auto flex justify-end hidden">
+                            <button id="download-pdf-btn" class="w-full sm:w-auto bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                Download PDF
+                            </button>
+                        </div>
+                    </div>
+                    <div id="roadmap-grid-container"></div>
+                    
+                    <!-- Regenerate Button Section -->
+                    <div id="regenerate-section" class="mt-16 text-center">
+                        <button id="regenerate-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center justify-center gap-2 mx-auto">
+                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.664 0l3.181-3.183m-11.664 0l4.992-4.993m-4.993 0l-3.181 3.183a8.25 8.25 0 000 11.664l3.181 3.183" />
+                            </svg>
+                            Regenerate Roadmap
+                        </button>
+                    </div>
+
+                    <!-- "About Us" Section -->
+                    <section id="about-us" class="mt-20 pt-12 border-t" style="border-color: var(--border-secondary);">
+                        <h2 class="text-2xl font-bold text-center mb-6">Want to Know More About Us?</h2>
+                        <div class="max-w-3xl mx-auto text-center space-y-4" style="color: var(--text-secondary);">
+                            <p>Smart Raasta isn’t just another career platform — it’s a guide built for Pakistanis, by Pakistanis, who understand the real challenges students and professionals face here.Our mission is simple: to turn ambition into opportunity.We help you find your direction through clear, practical, and data-driven career roadmaps — all tailored to the realities of Pakistan’s evolving job market.Whether you’re just starting out or looking to grow in your career, Smart Raasta is here to help you take the next step with confidence.</p>
+                            <a href="https://muhammad-owias.github.io/portfolio/" target="_blank" rel="noopener noreferrer" class="inline-block mt-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
+                                Visit Our Website
+                            </a>
+                        </div>
+                    </section>
+                </div>
+                 <!-- Footer Section -->
+                <footer id="main-footer" class="w-full p-6 mt-16 text-center" style="background-color: var(--bg-secondary); color: var(--text-secondary);">
+                    <div class="max-w-lg mx-auto">
+                        <h3 class="text-lg font-semibold mb-2" style="color: var(--text-primary);">Help Us Improve</h3>
+                        <p class="mb-4 text-sm">We’d love to hear from you — share your thoughts or ideas below!</p>
+                        <a href="professional.OTS@Gmail.com" class="inline-block bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-6 rounded-lg transition-colors text-sm">
+                            Share Your Feedback
+                        </a>
+                        <p class="mt-6 text-xs">&copy; © 2025 Smart Raasta — Founded by Muhammad Owais — because every journey deserves the right direction.</p>
+                    </div>
+                </footer>
+            </div>
+        </main>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- SECTION: Modals                                                     -->
+    <!-- =================================================================== -->
+
+    <!-- Skill Details Modal -->
+    <div id="skill-modal-overlay" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex justify-center items-center p-4 z-50 opacity-0 pointer-events-none">
+        <div id="skill-modal-content" class="bg-gray-900 border border-gray-800 rounded-xl shadow-2xl w-full max-w-2xl transform scale-95 opacity-0 flex flex-col" style="max-height: 90vh;">
+            <div class="p-6 sm:p-8 border-b border-gray-800 flex-shrink-0">
+                <div class="flex justify-between items-start"><h2 id="modal-title" class="text-2xl font-bold text-white pr-4"></h2><button id="modal-close-btn" class="text-gray-400 hover:text-white text-3xl leading-none flex-shrink-0">&times;</button></div>
+            </div>
+            <div class="p-6 sm:p-8 overflow-y-auto">
+                <p id="modal-description" class="text-gray-300 mb-6"></p>
+                <div id="modal-details-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6"></div>
+                <div><h3 class="text-xl font-semibold text-white mb-3" data-translate-key="resources_title">Suggested Resources</h3><ul id="modal-resources" class="space-y-3"></ul></div>
+            </div>
+            <div class="p-6 sm:p-8 border-t border-gray-800 flex-shrink-0"><button id="modal-complete-btn" class="w-full font-bold py-3 px-4 rounded-lg transition-colors"></button></div>
+        </div>
+    </div>
+
+    <!-- Roadmap Completion Modal -->
+    <div id="completion-modal-overlay" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex justify-center items-center p-4 z-50 opacity-0 pointer-events-none">
+        <div id="completion-modal-content" class="bg-gray-900 border border-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6 sm:p-8 transform scale-95 opacity-0 text-center">
+             <svg class="checkmark mx-auto h-16 w-16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                <circle class="checkmark__circle" cx="26" cy="26" r="25" stroke-dasharray="166" stroke-dashoffset="166" stroke-width="3" stroke-miterlimit="10" stroke="#14b8a6" fill="none"/>
+                <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" stroke-dasharray="48" stroke-dashoffset="48" stroke-width="3"/>
+            </svg>
+            <h2 class="text-3xl font-bold text-white mt-4" data-translate-key="completion_title">Congratulations!</h2>
+            <p class="text-gray-300 my-4" data-translate-key="completion_subtitle">You’ve reached the end of your roadmap but this is just the beginning. Let’s take the next step together.</p>
+            <button id="completion-close-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg transition-colors" data-translate-key="awesome_button">Awesome!</button>
+        </div>
+    </div>
+
+    <!-- Custom Alert/Confirm Modal -->
+    <div id="custom-alert-overlay" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex justify-center items-center p-4 z-[60] opacity-0 transition-opacity duration-300">
+        <div id="custom-alert-content" class="bg-gray-900 border border-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6 sm:p-8 transform scale-95 opacity-0 text-center transition-all duration-300">
+            <h2 id="custom-alert-title" class="text-2xl font-bold text-white mb-4"></h2>
+            <p id="custom-alert-message" class="text-gray-300 my-4"></p>
+            <div class="flex flex-col sm:flex-row justify-end gap-4 mt-6">
+                <button id="custom-alert-cancel-btn" class="w-full sm:w-auto bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">Cancel</button>
+                <button id="custom-alert-confirm-btn" class="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- JAVASCRIPT LOGIC                                                    -->
+    <!-- =================================================================== -->
     <script>
-        // --- CONFIGURATION ---
-        // <!-- WARNING: Storing API keys in frontend code is insecure and should not be done in a production environment. -->
-        // <!-- For this prototype, replace "YOUR_GEMINI_API_KEY" with your actual key. -->
-        const apiKey = "AIzaSyDLy5BkQSNi13TK8FIvtwW7b0Rg1R4uPAg"; 
+        // --- SCRIPT CONFIGURATION & CONSTANTS ---
+        
+        // The API key will be automatically provided in the execution environment.
+        const apiKey = "AIzaSyB8Ir7lic_JN4MYogAegFIAuCpVbKrf7Os";
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+        
+        // PDF Watermark Configuration: Change this value to set a different watermark. Leave empty for no watermark.
+        const PDF_WATERMARK_TEXT = 'Smart Raasta Report'; 
 
-        // --- STATE ---
+        // System instructions for the Gemini API call. This is the new, detailed prompt.
+        const customApiInstructions = `
+        You are an expert data researcher and career strategist specializing in the Pakistani job market. Your task is to perform a deep research-based analysis and generate a detailed, well-structured career roadmap based on user inputs.
+
+        ### OBJECTIVE
+        The purpose is to provide a realistic, region-specific, and actionable roadmap for a Pakistani student or professional. The output MUST be a single, valid JSON object.
+
+        ### RESEARCH SCOPE & CONTEXT (For your reference)
+        1.  **Overview**: Consider Pakistan’s current job/education ecosystem, major employment sectors (IT, textiles, agriculture, services), and emerging industries (AI, cybersecurity, freelancing, renewable energy).
+        2.  **Regional/Provincial Breakdown**: Factor in the user's province (Punjab, Sindh, KP, Balochistan, GB, AJK) to tailor opportunities. Industrial hubs are in Punjab and Sindh, while other regions have unique local economies.
+        3.  **Career Pathways**: Identify popular and realistic career paths (e.g., Software Development, Digital Marketing, Cybersecurity, UI/UX, Freelancing, Civil Engineering, Healthcare).
+        4.  **Education & Skill Gap**: Be aware of the gap between Pakistani academia and industry demands. Emphasize practical skills, certifications, and online learning.
+        5.  **Localization Insights**: Consider urban vs. rural job availability, language preferences (Urdu/English), and digital literacy challenges.
+        6.  **The information should be updated.
+        7.  **Try to find free courses.
+
+        ### USER INPUTS (You will be provided with these)
+        * **Desired Career Field**: e.g., "Software Development"
+        * **Specific Interests**: e.g., "AI, Web Development" (optional)
+        * **Highest Education**: e.g., "Bachelor's Degree"
+        * **Province**: e.g., "Punjab"
+        * **Language**: e.g., "English" or "Roman Urdu"
+
+        ### REQUIRED OUTPUT FORMAT
+        You MUST return your findings as a single, valid JSON object. Do NOT include any text, markdown, or explanations outside of the JSON structure.
+
+        **JSON Structure:**
+        {
+          "name": "Localized Career Name (e.g., 'Software Developer in Punjab')",
+          "summary": "A brief, motivating summary of the career outlook in the specified region.",
+          "milestones": [
+            {
+              "title": "Phase 1: Foundational Skills (Beginner)",
+              "skills": [
+                {
+                  "id": "unique-id-1",
+                  "title": "Skill Title",
+                  "description": "Brief, localized description. Mention its relevance in Pakistan.",
+                  "salary_pkr": "PKR 50,000 - 80,000 (Entry Level)",
+                  "future_growth_rating": 4.5,
+                  "job_opportunities": ["Local Software Houses (Lahore/Karachi)", "Remote/Freelance on Upwork/Fiverr"],
+                  "resources": [
+                    { "name": "Resource Name (Free/Affordable)", "url": "https://example.com" }
+                  ],
+                  "status": "incomplete"
+                }
+              ]
+            },
+            {
+              "title": "Phase 2: Intermediate & Specialization",
+              "skills": [
+                // ... more skill objects
+              ]
+            },
+            {
+              "title": "Phase 3: Advanced & Professional Growth",
+              "skills": [
+                // ... more skill objects
+              ]
+            }
+          ]
+        }
+        `;
+        
+        // Animated messages for the loading screen.
+        const animatedLoadingMessages = [
+            "Analyzing local job market trends...",
+            "Consulting AI career strategists...",
+            "Mapping skills to opportunities...",
+            "Tailoring your personalized path...",
+            "Identifying key growth areas...",
+            "Compiling relevant resources...",
+            "Forecasting salary expectations...",
+            "Structuring your milestones...",
+            "Finalizing your career blueprint...",
+            "Almost there, preparing your Raasta..."
+        ];
+
+        // --- GLOBAL STATE VARIABLES ---
         let currentRoadmap = null;
-        let activeSkill = null;
+        let isCompletionPopupShown = false;
+        let lastScrollY = 0;
+        let confirmCallback = null;
+        let progressInterval = null; 
+        let loadingMessageInterval = null;
 
-        // --- DOM ELEMENTS ---
-        const loadingScreen = document.getElementById('loading-screen');
-        const apiLoadingOverlay = document.getElementById('api-loading-overlay');
-        const questionnaireModal = document.getElementById('questionnaire-modal');
-        const questionnaireForm = document.getElementById('questionnaire-form');
-        const generateBtn = document.getElementById('generate-btn');
-        const mainContent = document.getElementById('main-content');
-        const mainHeader = document.getElementById('main-header');
-        const roadmapContainer = document.getElementById('roadmap-container');
-        const detailsPanel = document.getElementById('details-panel');
-        const detailsTitle = document.getElementById('details-title');
-        const detailsDescription = document.getElementById('details-description');
-        const detailsResources = document.getElementById('details-resources');
-        const closePanelBtn = document.getElementById('close-panel-btn');
-        const completeBtn = document.getElementById('complete-btn');
+        // --- DOM ELEMENT SELECTORS ---
+        const el = id => document.getElementById(id);
+        const loadingScreen = el('loading-screen'), apiLoadingOverlay = el('api-loading-overlay'),
+              apiLoadingProgressBar = el('api-loading-progress-bar'), apiLoadingProgressText = el('api-loading-progress-text'),
+              loadingMessageContainer = el('loading-message-container'),
+              questionnaireModalOverlay = el('questionnaire-modal-overlay'), questionnaireForm = el('questionnaire-form'),
+              generateBtn = el('generate-btn'), mainContent = el('main-content'),
+              mainHeader = el('main-header'), roadmapGridContainer = el('roadmap-grid-container'),
+              regenerateBtn = el('regenerate-btn'),
+              roadmapContent = el('roadmap-content'), progressContainer = el('progress-container'),
+              pdfControls = el('pdf-controls'), downloadPdfBtn = el('download-pdf-btn'),
+              skillModalOverlay = el('skill-modal-overlay'), skillModalContent = el('skill-modal-content'),
+              modalTitle = el('modal-title'), modalDescription = el('modal-description'),
+              modalResources = el('modal-resources'), modalCloseBtn = el('modal-close-btn'),
+              modalCompleteBtn = el('modal-complete-btn'), modalDetailsGrid = el('modal-details-grid'),
+              completionModalOverlay = el('completion-modal-overlay'), completionModalContent = el('completion-modal-content'),
+              completionCloseBtn = el('completion-close-btn'),
+              customAlertOverlay = el('custom-alert-overlay'), customAlertContent = el('custom-alert-content'),
+              customAlertTitle = el('custom-alert-title'), customAlertMessage = el('custom-alert-message'),
+              customAlertConfirmBtn = el('custom-alert-confirm-btn'), customAlertCancelBtn = el('custom-alert-cancel-btn');
 
-        // --- API INTERACTION ---
-        async function callGeminiAPI(goal, experience) {
-            const systemInstruction = {
-                role: "system",
-                parts: [{
-                    text: `You are an expert career planning AI named Pathfinder. Your goal is to generate a detailed, step-by-step career roadmap. The user will provide their desired career and their experience level. You MUST respond with ONLY a valid JSON object that strictly follows this structure, with no extra text or markdown:
-                        {
-                          "name": "Career Name",
-                          "milestones": [
-                            {
-                              "title": "Phase 1: Title",
-                              "skills": [
-                                { "id": "unique-id-1", "title": "Skill Title", "description": "Brief description.", "resources": [{ "name": "Resource suggestion 1" }, { "name": "Resource suggestion 2" }], "status": "incomplete" },
-                                { "id": "unique-id-2", "title": "Skill Title", "description": "Brief description.", "resources": [{ "name": "Resource suggestion 1" }], "status": "incomplete" }
-                              ]
-                            }
-                          ]
-                        }
-                        - The 'id' for each skill must be a unique, simple string (e.g., 'fe-html', 'ds-python').
-                        - The 'resources' array should contain AI-generated suggestions for learning, not real URLs.`
-                }]
-            };
+        // --- LANGUAGE TRANSLATIONS ---
+        const translations = {
+            en: {
+                questionnaire_title: "Design Your Pakistan-Specific Roadmap",
+                questionnaire_subtitle: "Let our AI design a personalized career blueprint based on the local job market.",
+                career_goal_label: "Your Desired Career Field",
+                interests_label: "Specific Interests (Optional)",
+                education_label: "Highest Education",
+                province_label: "Your Province",
+                generate_button: "Generate My Grid",
+                progress_label: "Overall Progress",
+                resources_title: "Suggested Resources",
+                completion_title: "Congratulations!",
+                completion_subtitle: "You've completed all the steps in your roadmap. You're ready for the next chapter!",
+                awesome_button: "Awesome!",
+                completed_message: "Roadmap Completed!",
+                lang_confirm_title: "Confirm Language Change",
+                lang_confirm_message: "Changing the language will re-generate your roadmap with new, translated content from the AI. Do you want to continue?",
+                limit_title: "Usage Limit Reached",
+                limit_message: "You have generated 3 roadmaps in the last hour. Please try again later. The page will now close.",
+                error_title: "Error"
+            },
+            ur: {
+                questionnaire_title: "Apna Pakistan-Makhsoos Roadmap Banayein",
+                questionnaire_subtitle: "Hamare AI ko muqami job market ki bunyad par aap ka zati career blueprint design karne dein.",
+                career_goal_label: "Aap Ka Matlooba Career Shoba",
+                interests_label: "Makhsoos Dilchaspiyan (Ikhtiyaari)",
+                education_label: "Aala Taleem",
+                province_label: "Aap Ka Sooba",
+                generate_button: "Mera Grid Banayein",
+                progress_label: "Majmui Taraqqi",
+                resources_title: "Tajweez Karda Wasail",
+                completion_title: "Mubarak Ho!",
+                completion_subtitle: "Aap ne apne roadmap ke tamam marahil mukammal kar liye hain. Aap agle bab ke liye tayar hain!",
+                awesome_button: "Zabardast!",
+                completed_message: "Roadmap Mukammal!",
+                lang_confirm_title: "Zubaan Tabdeel Karne Ki Tasdeeq Karein",
+                lang_confirm_message: "Zubaan tabdeel karne se AI se naye, tarjuma shuda mawad ke sath aap ka roadmap dobara banaya jayega. Kya aap jari rakhna chahte hain?",
+                limit_title: "Istemaal Ki Hadd Mukammal",
+                limit_message: "Aap ne pichle ghantay mein 3 roadmaps banaye hain. Baraye meharbani baad mein koshish karein. Safha ab band ho jayega.",
+                error_title: "Ghalti"
+            }
+        };
 
-            const userPrompt = {
-                role: "user",
-                parts: [{ text: `Generate a roadmap for a '${goal}' with a '${experience}' experience level.` }]
-            };
+        // --- CORE LOGIC: USAGE, API, UI RENDERING ---
+
+        /**
+         * Checks if the user has exceeded the generation limit (3 per hour).
+         * @returns {boolean} True if the user is within the limit, false otherwise.
+         */
+        function checkUsageLimit() {
+            const now = new Date().getTime();
+            const oneHourAgo = now - (60 * 60 * 1000);
+            let timestamps = JSON.parse(localStorage.getItem('generationTimestamps')) || [];
+            
+            const recentTimestamps = timestamps.filter(ts => ts > oneHourAgo);
+            localStorage.setItem('generationTimestamps', JSON.stringify(recentTimestamps));
+            
+            return recentTimestamps.length < 3;
+        }
+
+        /**
+         * Records the timestamp of a new generation in localStorage.
+         */
+        function recordGeneration() {
+            let timestamps = JSON.parse(localStorage.getItem('generationTimestamps')) || [];
+            timestamps.push(new Date().getTime());
+            localStorage.setItem('generationTimestamps', JSON.stringify(timestamps));
+        }
+
+        /**
+         * Calls the Gemini API to generate the career roadmap.
+         * @returns {Promise<object|null>} The roadmap data object or null if an error occurs.
+         */
+        async function callGeminiAPI(goal, interests, education, location, lang) {
+            const langInstruction = lang === 'ur' ? 'All text in the response MUST be in Roman Urdu.' : 'All text in the response MUST be in English.';
+            const interestsText = interests ? `The user has specific interests in: '${interests}'.` : '';
+            const systemInstruction = { role: "system", parts: [{ text: `${customApiInstructions} ${langInstruction}` }] };
+            const userPromptText = `
+                Generate a career roadmap based on these details:
+                - Career Field: '${goal}'
+                - Specific Interests: '${interests || 'None specified'}'
+                - Education Level: '${education}'
+                - Province: '${location}', Pakistan
+                ${interestsText}
+            `;
+            const userPrompt = { role: "user", parts: [{ text: userPromptText }] };
 
             try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [userPrompt],
-                        systemInstruction: systemInstruction,
-                        generationConfig: {
-                           responseMimeType: "application/json",
-                        }
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`API Error: ${response.statusText}`);
-                }
-
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [userPrompt], systemInstruction, generationConfig: { responseMimeType: "application/json" } }) });
+                if (!response.ok) throw new Error(`API Error: ${response.statusText} (${response.status})`);
                 const result = await response.json();
-                const jsonText = result.candidates[0].content.parts[0].text;
-                return JSON.parse(jsonText);
-
+                if (result.candidates?.[0]?.content?.parts?.[0]) {
+                     return JSON.parse(result.candidates[0].content.parts[0].text);
+                } else {
+                    console.error("API Response was empty or invalid:", result);
+                    throw new Error("Invalid response structure from API.");
+                }
             } catch (error) {
                 console.error("Error calling Gemini API:", error);
-                alert("Failed to generate roadmap. Please check your API key and network connection. " + error.message);
+                const currentLang = localStorage.getItem('lang') || 'en';
+                showCustomAlert(
+                    translations[currentLang].error_title,
+                    `Failed to generate roadmap. The AI may be busy or an error occurred. Details: ${error.message}`,
+                    () => {}
+                );
                 return null;
             }
         }
-
-        // --- RENDER FUNCTIONS ---
+        
+        /**
+         * Renders the entire roadmap grid based on the provided data.
+         * @param {object} roadmapData - The JSON object returned from the API.
+         */
         function renderRoadmap(roadmapData) {
             currentRoadmap = roadmapData;
-            mainHeader.innerHTML = `
-                <h1 class="text-4xl font-bold text-white">${roadmapData.name} Roadmap</h1>
-                <p class="text-lg text-gray-400 mt-1">Your AI-generated path to becoming a ${roadmapData.name}.</p>`;
+            isCompletionPopupShown = false;
+            
+            progressContainer.innerHTML = `<div class="flex justify-between mb-1"><span class="text-base font-medium text-teal-400" data-translate-key="progress_label">Overall Progress</span><span id="progress-text" class="text-sm font-medium text-teal-400">0%</span></div><div class="w-full bg-gray-700 rounded-full h-2.5"><div id="progress-bar-inner" class="bg-teal-500 h-2.5 rounded-full" style="width: 0%"></div></div>`;
 
-            roadmapContainer.innerHTML = '';
-            roadmapData.milestones.forEach(milestone => {
-                const groupDiv = document.createElement('div');
-                groupDiv.className = 'milestone-group';
-                groupDiv.innerHTML = `
-                    <h3 class="milestone-title text-2xl font-bold mb-6 relative text-cyan-400">${milestone.title}</h3>
-                    <div class="space-y-4">
-                        ${milestone.skills.map(skill => `
-                            <div class="skill-node ${skill.status === 'completed' ? 'completed' : ''}" data-skill-id="${skill.id}">
-                                <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-cyan-500 hover:bg-gray-700 transition-colors">
-                                    <p class="text-lg font-semibold text-white">${skill.title}</p>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-                roadmapContainer.appendChild(groupDiv);
+            let gridHTML = `<div class="space-y-12">
+                <div class="text-center sm:text-left">
+                    <h1 class="text-3xl sm:text-4xl font-bold">${roadmapData.name}</h1>
+                    <p class="mt-2 text-lg text-gray-400">${roadmapData.summary || ''}</p>
+                </div>
+            `;
+
+            roadmapData.milestones.forEach(m => {
+                gridHTML += `<div class="milestone-phase"><h2 class="text-2xl font-bold border-b-2 pb-3 mb-6" style="border-color: var(--border-secondary);">${m.title}</h2><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-stretch">${m.skills.map(s => `<div class="skill-card p-4 rounded-lg cursor-pointer flex flex-col justify-between ${s.status === 'completed' ? 'completed' : ''}" data-skill-id="${s.id}"><p class="font-semibold text-sm">${s.title}</p><div class="self-end status-dot bg-gray-600"></div></div>`).join('')}</div></div>`;
             });
+            gridHTML += '</div>';
+            roadmapGridContainer.innerHTML = gridHTML;
+            
+            updateProgress();
+            applyTranslations(localStorage.getItem('lang') || 'en');
+
+            pdfControls.classList.add('hidden'); // Hide initially
+            setTimeout(() => {
+                pdfControls.classList.remove('hidden');
+                pdfControls.classList.add('animate-fade-in-scale-up');
+            }, 60000);
         }
         
+        /**
+         * Finds a specific skill object by its ID within the current roadmap data.
+         * @param {string} skillId - The unique ID of the skill to find.
+         * @returns {object|null} The skill object or null if not found.
+         */
         function findSkillById(skillId) {
+            if (!currentRoadmap) return null;
             for (const milestone of currentRoadmap.milestones) {
                 const found = milestone.skills.find(s => s.id === skillId);
                 if (found) return found;
@@ -237,82 +615,396 @@
             return null;
         }
 
-        function renderDetailsPanel(skill) {
-            activeSkill = skill;
-            detailsTitle.textContent = skill.title;
-            detailsDescription.textContent = skill.description || "No description available.";
-            detailsResources.innerHTML = skill.resources?.map(res => `<li>${res.name}</li>`).join('') || '<li>No resources suggested by AI.</li>';
-            updateCompleteButton(skill.status);
-            detailsPanel.classList.remove('hidden');
+        /**
+         * Updates the progress bar and text based on completed skills. Also checks for roadmap completion.
+         */
+        function updateProgress() {
+            if (!currentRoadmap) return;
+            const allSkills = currentRoadmap.milestones.flatMap(m => m.skills);
+            const completedSkills = allSkills.filter(s => s.status === 'completed');
+            const progressPercentage = allSkills.length > 0 ? (completedSkills.length / allSkills.length) * 100 : 0;
+            
+            const progressBar = el('progress-bar-inner');
+            const progressText = el('progress-text');
+            if(progressBar) progressBar.style.width = `${progressPercentage}%`;
+            if(progressText) progressText.textContent = `${Math.round(progressPercentage)}%`;
+
+            if (Math.round(progressPercentage) === 100 && !isCompletionPopupShown) {
+                openCompletionModal();
+                isCompletionPopupShown = true;
+            }
+        }
+        
+        /**
+         * Replaces the progress bar with a "Roadmap Completed!" message.
+         */
+        function renderCompletionState() {
+            if(progressContainer) {
+                progressContainer.innerHTML = `<div class="flex items-center justify-end h-full text-emerald-400 animate-pulse"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span class="text-base font-medium ml-2" data-translate-key="completed_message">Roadmap Completed!</span></div>`;
+                applyTranslations(localStorage.getItem('lang') || 'en');
+            }
+        }
+        
+        /**
+         * Generates HTML for star ratings.
+         * @param {number} rating - The rating value (e.g., 4.5).
+         * @returns {string} The HTML string for the stars.
+         */
+        function createStars(rating) {
+            let starsHTML = '';
+            const fullStars = Math.floor(rating);
+            const halfStar = rating % 1 !== 0;
+            for(let i = 0; i < 5; i++) {
+                if (i < fullStars) {
+                    starsHTML += `<svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>`;
+                } else if (i === fullStars && halfStar) {
+                    starsHTML += `<svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292zM10 12.433V6.214l.951 2.924a1 1 0 00.95.69h3.087l-2.4 1.74a1 1 0 00-.364 1.118l.95 2.923-2.4-1.74a1 1 0 00-1.175 0l-2.4 1.74.95-2.923a1 1 0 00-.364-1.118l-2.4-1.74h3.087a1 1 0 00.95-.69L10 6.214z"></path></svg>`;
+                } else {
+                     starsHTML += `<svg class="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>`;
+                }
+            }
+            return starsHTML;
         }
 
-        function updateCompleteButton(status) {
-             if (status === 'completed') {
-                completeBtn.textContent = 'Mark as Incomplete';
-                completeBtn.className = 'w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-lg transition-colors';
-            } else {
-                completeBtn.textContent = 'Mark as Completed';
-                completeBtn.className = 'w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg transition-colors';
-            }
+        // --- MODAL & OVERLAY LOGIC ---
+
+        /**
+         * Opens and populates the skill details modal.
+         * @param {object} skill - The skill object to display.
+         */
+        function openModal(skill) {
+             modalTitle.textContent = skill.title;
+             modalDescription.textContent = skill.description || "No description available.";
+             modalDetailsGrid.innerHTML = `<div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400 mb-1">Avg. Salary (PKR)</p><p class="text-lg font-semibold text-white">${skill.salary_pkr || 'N/A'}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400 mb-1">Future Growth</p><div class="flex items-center">${createStars(skill.future_growth_rating || 0)}</div></div><div class="bg-gray-800 p-4 rounded-lg sm:col-span-2"><p class="text-sm text-gray-400 mb-1">Opportunities</p><p class="text-lg font-semibold text-white">${skill.job_opportunities?.join(', ') || 'N/A'}</p></div>`;
+             modalResources.innerHTML = skill.resources?.length ? skill.resources.map(r => `<li><a href="${r.url}" target="_blank" rel="noopener noreferrer" class="text-teal-400 hover:text-teal-300 underline">${r.name}</a></li>`).join('') : '<li>No suggestions provided.</li>';
+             modalCompleteBtn.onclick = () => handleCompleteClick(skill.id);
+             updateModalCompleteButton(skill.status);
+             skillModalOverlay.classList.remove('hidden');
+             setTimeout(() => skillModalOverlay.classList.add('open'), 10);
+             applyTranslations(localStorage.getItem('lang') || 'en');
+        }
+
+        function closeModal() {
+             skillModalOverlay.classList.remove('open');
+             setTimeout(() => skillModalOverlay.classList.add('hidden'), 300);
+        }
+        
+        function openCompletionModal() {
+             completionModalOverlay.classList.remove('hidden');
+             setTimeout(() => completionModalOverlay.classList.add('open'), 10);
+             applyTranslations(localStorage.getItem('lang') || 'en');
+        }
+
+        function closeCompletionModal() {
+             completionModalOverlay.classList.remove('open');
+             setTimeout(() => {
+                 completionModalOverlay.classList.add('hidden');
+                 renderCompletionState();
+             }, 300);
+        }
+
+        function updateModalCompleteButton(status) {
+              modalCompleteBtn.textContent = status === 'completed' ? 'Mark as Incomplete' : 'Mark as Completed';
+              modalCompleteBtn.className = `w-full font-bold py-3 px-4 rounded-lg transition-colors ${status === 'completed' ? 'bg-yellow-600 hover:bg-yellow-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`;
+        }
+        
+        function showCustomAlert(title, message, onConfirm, showCancel = false) {
+            customAlertTitle.textContent = title;
+            customAlertMessage.textContent = message;
+            confirmCallback = onConfirm;
+            customAlertCancelBtn.classList.toggle('hidden', !showCancel);
+            customAlertConfirmBtn.textContent = showCancel ? "Confirm" : "OK";
+            customAlertOverlay.classList.remove('hidden');
+            setTimeout(() => {
+                customAlertOverlay.classList.remove('opacity-0');
+                customAlertContent.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        }
+
+        function hideCustomAlert() {
+            customAlertOverlay.classList.add('opacity-0');
+            customAlertContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                customAlertOverlay.classList.add('hidden');
+            }, 300);
+        }
+
+        function showLoadingWithProgress() {
+            clearInterval(progressInterval);
+            clearInterval(loadingMessageInterval);
+            apiLoadingOverlay.classList.remove('hidden');
+            
+            // Progress bar simulation
+            let progress = 0;
+            apiLoadingProgressBar.style.width = '0%';
+            apiLoadingProgressText.textContent = '0%';
+            progressInterval = setInterval(() => {
+                progress += Math.random() * 5;
+                if (progress > 95) {
+                    progress = 95;
+                    clearInterval(progressInterval);
+                }
+                apiLoadingProgressBar.style.width = `${progress}%`;
+                apiLoadingProgressText.textContent = `${Math.round(progress)}%`;
+            }, 200);
+
+            // Animated message loop
+            let messageIndex = 0;
+            loadingMessageContainer.textContent = animatedLoadingMessages[0];
+            loadingMessageInterval = setInterval(() => {
+                loadingMessageContainer.style.opacity = 0;
+                setTimeout(() => {
+                    messageIndex = (messageIndex + 1) % animatedLoadingMessages.length;
+                    loadingMessageContainer.textContent = animatedLoadingMessages[messageIndex];
+                    loadingMessageContainer.style.opacity = 1;
+                }, 300); // Wait for fade out
+            }, 2000); // Change message every 2 seconds
+        }
+        
+        function hideLoadingOverlay() {
+            clearInterval(progressInterval);
+            clearInterval(loadingMessageInterval);
+            apiLoadingProgressBar.style.width = '100%';
+            apiLoadingProgressText.textContent = '100%';
+            setTimeout(() => {
+                apiLoadingOverlay.classList.add('hidden');
+            }, 500);
         }
         
         // --- EVENT HANDLERS ---
+
+        /**
+         * Handles the main form submission for generating a roadmap.
+         * @param {Event} e - The form submission event.
+         */
         async function handleFormSubmit(e) {
-            e.preventDefault();
-            if (!apiKey) {
-                alert("Please add your Gemini API Key to the script.");
+            if (e) e.preventDefault();
+            
+            const lang = localStorage.getItem('lang') || 'en';
+
+            if (!checkUsageLimit()) {
+                showCustomAlert(
+                    translations[lang].limit_title,
+                    translations[lang].limit_message,
+                    () => { window.location.href = 'about:blank'; }
+                );
                 return;
             }
-            const careerGoal = document.getElementById('career-goal').value;
-            const experienceLevel = document.getElementById('experience-level').value;
-
-            apiLoadingOverlay.classList.remove('hidden');
+            
+            showLoadingWithProgress();
             generateBtn.disabled = true;
-            generateBtn.textContent = "Generating...";
+            regenerateBtn.disabled = true;
 
-            const personalizedRoadmap = await callGeminiAPI(careerGoal, experienceLevel);
+            const personalizedRoadmap = await callGeminiAPI(
+                el('career-goal').value, 
+                el('user-interests').value,
+                el('education-level').value, 
+                el('location').value, 
+                lang
+            );
 
-            apiLoadingOverlay.classList.add('hidden');
+            hideLoadingOverlay();
             generateBtn.disabled = false;
-            generateBtn.textContent = "Generate My Roadmap";
+            regenerateBtn.disabled = false;
+            applyTranslations(lang);
 
             if (personalizedRoadmap) {
+                recordGeneration();
                 renderRoadmap(personalizedRoadmap);
-                questionnaireModal.classList.add('opacity-0', 'pointer-events-none');
+                questionnaireModalOverlay.classList.add('opacity-0', 'pointer-events-none');
+                
+                // Animate main content appearing
                 mainContent.classList.remove('hidden');
+                mainContent.classList.remove('animate-fade-in-scale-up');
+                void mainContent.offsetWidth; // Force reflow to re-trigger animation
+                mainContent.classList.add('animate-fade-in-scale-up');
             }
         }
         
-        function handleSkillClick(e) {
-            const skillNode = e.target.closest('.skill-node');
-            if (skillNode) {
-                const skillId = skillNode.dataset.skillId;
-                const skill = findSkillById(skillId);
-                if (skill) renderDetailsPanel(skill);
+        function handleGridClick(e) {
+            const card = e.target.closest('.skill-card');
+            if (card) {
+                const skill = findSkillById(card.dataset.skillId);
+                if(skill) openModal(skill);
+            }
+        }
+        
+        function handleCompleteClick(skillId) {
+            const skill = findSkillById(skillId);
+            if (!skill) return;
+            skill.status = skill.status === 'completed' ? 'incomplete' : 'completed';
+            
+            // This logic correctly reverts progress when a task is unchecked.
+            const skillCard = document.querySelector(`.skill-card[data-skill-id="${skillId}"]`);
+            if (skillCard) {
+                skillCard.classList.toggle('completed', skill.status === 'completed');
+            }
+            
+            updateProgress(); // Recalculates progress from scratch.
+            closeModal();
+        }
+
+        function handleDownloadPdf() {
+            if (!currentRoadmap) {
+                showCustomAlert("No Roadmap", "Please generate a roadmap first before downloading.", () => {});
+                return;
+            }
+
+            const goal = el('career-goal').value || 'career';
+            const filename = `${goal.toLowerCase().replace(/\s+/g, '-')}-roadmap.pdf`;
+            const watermarkText = PDF_WATERMARK_TEXT;
+            
+            let pdfContentHtml = `
+                <style>
+                    body { font-family: sans-serif; color: #333; }
+                    h1 { font-size: 24px; color: #14b8a6; border-bottom: 2px solid #14b8a6; padding-bottom: 10px; margin-bottom: 20px; }
+                    h2 { font-size: 20px; color: #111827; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+                    h3 { font-size: 16px; color: #111827; margin-top: 20px; font-weight: bold; }
+                    p { margin-bottom: 10px; line-height: 1.6; }
+                    ul { list-style-type: disc; margin-left: 20px; padding-left: 0; }
+                    li { margin-bottom: 5px; }
+                    strong { font-weight: bold; }
+                    a { color: #14b8a6; text-decoration: none; }
+                </style>
+                <body>
+                    <h1>${currentRoadmap.name}</h1>
+            `;
+
+            currentRoadmap.milestones.forEach(milestone => {
+                pdfContentHtml += `<h2>${milestone.title}</h2>`;
+                milestone.skills.forEach(skill => {
+                    pdfContentHtml += `
+                        <div style="margin-bottom: 25px; page-break-inside: avoid;">
+                            <h3>${skill.title}</h3>
+                            <p><strong>Description:</strong> ${skill.description || 'N/A'}</p>
+                            <p><strong>Average Salary (PKR):</strong> ${skill.salary_pkr || 'N/A'}</p>
+                            <p><strong>Future Growth:</strong> ${skill.future_growth_rating || 'N/A'} / 5</p>
+                            <p><strong>Opportunities:</strong> ${skill.job_opportunities?.join(', ') || 'N/A'}</p>
+                            <p><strong>Suggested Resources:</strong></p>
+                    `;
+                    if (skill.resources && skill.resources.length > 0) {
+                        pdfContentHtml += '<ul>';
+                        skill.resources.forEach(resource => {
+                            pdfContentHtml += `<li><a href="${resource.url}">${resource.name}</a></li>`;
+                        });
+                        pdfContentHtml += '</ul>';
+                    } else {
+                        pdfContentHtml += '<p>No resources suggested.</p>';
+                    }
+                    pdfContentHtml += '</div>';
+                });
+            });
+
+            pdfContentHtml += '</body>';
+            
+            const opt = {
+                margin:       [0.5, 0.5, 0.5, 0.5],
+                filename:     filename,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            
+            html2pdf().set(opt).from(pdfContentHtml).toPdf().get('pdf').then(function (pdf) {
+                if (watermarkText) {
+                    const totalPages = pdf.internal.getNumberOfPages();
+                    pdf.setFontSize(50);
+                    pdf.setTextColor(200, 200, 200);
+                    for (let i = 1; i <= totalPages; i++) {
+                        pdf.setPage(i);
+                        pdf.text(watermarkText, pdf.internal.pageSize.getWidth() / 2, pdf.internal.pageSize.getHeight() / 2, {
+                            angle: -45,
+                            align: 'center'
+                        });
+                    }
+                }
+            }).save();
+        }
+
+        function toggleTheme() {
+            document.documentElement.classList.toggle('light-mode');
+            const isLight = document.documentElement.classList.contains('light-mode');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        }
+        
+        function toggleLanguage() {
+            const currentLang = localStorage.getItem('lang') || 'en';
+            const newLang = currentLang === 'en' ? 'ur' : 'en';
+            
+            if (currentRoadmap) {
+                showCustomAlert(
+                    translations[currentLang].lang_confirm_title, 
+                    translations[currentLang].lang_confirm_message,
+                    () => {
+                        localStorage.setItem('lang', newLang);
+                        handleFormSubmit();
+                    },
+                    true
+                );
+            } else {
+                 localStorage.setItem('lang', newLang);
+                 applyTranslations(newLang);
             }
         }
 
-        function handleCompleteClick() {
-            if (!activeSkill) return;
-            activeSkill.status = activeSkill.status === 'completed' ? 'incomplete' : 'completed';
-            const node = document.querySelector(`[data-skill-id="${activeSkill.id}"]`);
-            if (node) {
-                node.classList.toggle('completed');
-            }
-            updateCompleteButton(activeSkill.status);
+        function applyTranslations(lang) {
+            document.querySelectorAll('[data-translate-key]').forEach(elem => {
+                const key = elem.dataset.translateKey;
+                if (translations[lang] && translations[lang][key]) {
+                    elem.textContent = translations[lang][key];
+                }
+            });
+            el('lang-toggle').textContent = lang.toUpperCase();
         }
-
-        // --- INITIALIZATION ---
+        
+        // --- INITIALIZATION & EVENT LISTENERS ---
+        
         document.addEventListener('DOMContentLoaded', () => {
+            // Set initial theme and language
+            if (localStorage.getItem('theme') === 'light') {
+                document.documentElement.classList.add('light-mode');
+            }
+            const savedLang = localStorage.getItem('lang') || 'en';
+            applyTranslations(savedLang);
+
+            // Show the initial questionnaire form after a brief delay
             setTimeout(() => {
                 loadingScreen.classList.add('opacity-0', 'pointer-events-none');
-                questionnaireModal.classList.remove('hidden');
+                questionnaireModalOverlay.classList.remove('hidden');
+                questionnaireModalOverlay.querySelector('div').classList.add('animate-fade-in-scale-up');
             }, 1000);
-
+            
+            // Attach all necessary event listeners
             questionnaireForm.addEventListener('submit', handleFormSubmit);
-            roadmapContainer.addEventListener('click', handleSkillClick);
-            closePanelBtn.addEventListener('click', () => detailsPanel.classList.add('hidden'));
-            completeBtn.addEventListener('click', handleCompleteClick);
+            regenerateBtn.addEventListener('click', handleFormSubmit);
+            downloadPdfBtn.addEventListener('click', handleDownloadPdf);
+            
+            mainHeader.addEventListener('click', e => {
+                if(e.target.closest('#theme-toggle')) toggleTheme();
+                if(e.target.closest('#lang-toggle')) toggleLanguage();
+            });
+
+            roadmapContent.addEventListener('scroll', () => {
+                const currentScrollY = roadmapContent.scrollTop;
+                mainHeader.classList.toggle('scrolled', currentScrollY > 20);
+                mainHeader.classList.toggle('hidden-header', currentScrollY > 100 && currentScrollY > lastScrollY);
+                lastScrollY = currentScrollY;
+            });
+
+            roadmapGridContainer.addEventListener('click', handleGridClick);
+            modalCloseBtn.addEventListener('click', closeModal);
+            skillModalOverlay.addEventListener('click', e => { if (e.target === skillModalOverlay) closeModal(); });
+            completionCloseBtn.addEventListener('click', closeCompletionModal);
+            completionModalOverlay.addEventListener('click', e => { if (e.target === completionModalOverlay) closeCompletionModal(); });
+
+            customAlertConfirmBtn.addEventListener('click', () => {
+                if (typeof confirmCallback === 'function') {
+                    confirmCallback();
+                }
+                hideCustomAlert();
+            });
+            customAlertCancelBtn.addEventListener('click', hideCustomAlert);
+            customAlertOverlay.addEventListener('click', e => { if (e.target === customAlertOverlay) hideCustomAlert(); });
         });
     </script>
 </body>

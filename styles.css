@@ -2,35 +2,24 @@
 :root {
     --bg-primary: #030712;
     --bg-secondary: #111827;
-    --bg-card: #111827;
     --text-primary: #F9FAFB;
-    --text-secondary: #9ca3af;
     --border-primary: #1f2937;
-    --border-secondary: #374151;
-    --accent-primary: #14b8a6;
-    --accent-primary-hover: #0d9488;
-    --accent-secondary: #D97706;
-    --accent-secondary-hover: #F59E0B;
     --header-bg: rgba(17, 24, 39, 0.8); 
-    --header-bg-scrolled: rgba(17, 24, 39, 0.95);
 }
 html.light-mode {
     --bg-primary: #f9fafb;
     --bg-secondary: #f3f4f6;
-    --bg-card: #ffffff;
     --text-primary: #111827;
-    --text-secondary: #4b5563;
     --border-primary: #e5e7eb;
-    --border-secondary: #d1d5db;
     --header-bg: rgba(243, 244, 246, 0.8);
-    --header-bg-scrolled: rgba(243, 244, 246, 0.95);
 }
 
-/* --- GENERAL STYLES & LAYOUT --- */
+/* --- GENERAL LAYOUT --- */
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
+    /* This background image provides the texture/gradient you wanted */
     background-image: 
         linear-gradient(rgba(3, 7, 18, 0.98), rgba(3, 7, 18, 0.98)),
         url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23111827' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2-H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
@@ -45,24 +34,8 @@ html.light-mode body {
 /* --- SCROLLBAR --- */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg-secondary); }
-::-webkit-scrollbar-thumb { background: var(--border-secondary); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border-primary); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
-
-/* --- UI COMPONENTS --- */
-#loading-screen, #api-loading-overlay { transition: opacity 0.5s ease-out; }
-.skill-card {
-    transition: all 0.2s ease-in-out;
-}
-.skill-card:not(.completed):hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-}
-.skill-card.completed { border-color: var(--accent-primary); }
-#progress-bar-inner { transition: width 0.5s ease-out; }
-
-/* --- MODAL & OVERLAYS --- */
-#skill-modal-overlay, #completion-modal-overlay, #custom-alert-overlay, #email-modal-overlay { transition: opacity 0.3s ease-in-out; }
-.open { opacity: 1 !important; pointer-events: auto !important; }
 
 /* --- ANIMATIONS --- */
 @keyframes fadeInScaleUp {

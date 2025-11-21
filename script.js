@@ -3,11 +3,16 @@ const WORKER_URL = 'https://smartrasta.timespace.workers.dev';
 const PDF_WATERMARK_TEXT = 'Smart Raasta Report';
 
 const animatedLoadingMessages = [
-    "Analyzing market trends...",
-    "Curating best resources...",
+    "Analyzing local job market trends...",
+    "Consulting AI career strategists...",
+    "Mapping skills to opportunities...",
+    "Tailoring your personalized path...",
+    "Identifying key growth areas...",
+    "Compiling relevant resources...",
+    "Forecasting salary expectations...",
     "Structuring your milestones...",
-    "Mapping career path...",
-    "Finalizing your roadmap..."
+    "Finalizing your career blueprint...",
+    "Almost there, preparing your Raasta..."
 ];
 
 // --- STATE ---
@@ -26,14 +31,10 @@ const el = id => document.getElementById(id);
 document.addEventListener('DOMContentLoaded', async () => {
     if (localStorage.getItem('theme') === 'light') {
         document.documentElement.classList.add('light-mode');
-        const moonIcon = document.querySelector('.fa-moon');
-        if(moonIcon) {
-            moonIcon.classList.remove('fa-moon');
-            moonIcon.classList.add('fa-sun');
-        }
+        updateThemeIcon(true);
     }
     
-    // Remove Loading Screen Fast
+    // Fast load
     setTimeout(() => {
         const ls = el('loading-screen');
         if(ls) ls.classList.add('opacity-0', 'pointer-events-none');
@@ -41,7 +42,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await checkAuth();
 
-    // First visit check
     if (!currentUserEmail && !localStorage.getItem('visitedBefore')) {
         setTimeout(() => {
             el('info-modal-overlay').classList.remove('hidden');
@@ -60,13 +60,12 @@ async function checkAuth() {
             const data = await res.json();
             currentUserEmail = data.email;
             updateHeaderState();
-            
             if (data.data && data.data.milestones) {
                 renderRoadmap(data.data);
                 el('questionnaire-container').classList.add('hidden');
             }
         }
-    } catch (e) { console.log("Guest or Network Error"); }
+    } catch (e) { console.log("Guest mode"); }
 }
 
 async function handleLogin(e) {
@@ -96,13 +95,13 @@ async function handleLogin(e) {
 
         if (currentRoadmap) {
             await saveRoadmapToCloud();
-            showCustomAlert("Success", "Roadmap saved successfully!");
+            showCustomAlert("Success", "Your roadmap has been saved!");
         } else {
             await checkAuth();
         }
 
     } catch (error) {
-        showCustomAlert('Error', 'Login failed. Please try again.');
+        showCustomAlert('Login Error', 'Could not verify email.');
     } finally {
         btn.textContent = originalText;
         btn.disabled = false;
@@ -144,7 +143,7 @@ async function handleFormSubmit(e) {
     showLoadingWithProgress();
     el('generate-btn').disabled = true;
 
-    const lang = 'en'; // Default to English as per request/simplification
+    const lang = 'en';
     try {
         const payload = {
             goal: el('career-goal').value,
@@ -161,18 +160,21 @@ async function handleFormSubmit(e) {
             credentials: 'include'
         });
 
-        if (!res.ok) throw new Error('Generation failed');
+        if (!res.ok) {
+            const txt = await res.json();
+            throw new Error(txt.error || 'Generation failed');
+        }
 
         const roadmap = await res.json();
-        if (!roadmap.milestones) throw new Error("Invalid AI response");
+        if (!roadmap.milestones) throw new Error("Invalid response");
         
+        recordGeneration();
         renderRoadmap(roadmap);
         el('questionnaire-container').classList.add('hidden');
-        
         if(currentUserEmail) saveRoadmapToCloud();
 
     } catch (error) {
-        showCustomAlert("Error", "Could not generate roadmap. Please try again.");
+        showCustomAlert("Error", error.message);
     } finally {
         hideLoadingOverlay();
         el('generate-btn').disabled = false;
@@ -184,55 +186,94 @@ function renderRoadmap(data) {
     currentRoadmap = data;
     el('roadmap-content').classList.remove('hidden');
     
-    // 1. Setup Header/Title
+    // --- HEADER (TITLE + SUMMARY) ---
     let html = `
-        <div class="mb-12 text-center animate-fade-in-up">
-            <h1 class="text-4xl font-bold mb-3" style="color: var(--text-primary);">${data.name}</h1>
-            <p class="text-lg max-w-2xl mx-auto" style="color: var(--text-secondary);">${data.summary}</p>
+        <div class="mb-10 text-center animate-fade-in-scale-up">
+            <h1 class="text-3xl md:text-4xl font-bold mb-3" style="color: var(--text-primary)">${data.name}</h1>
+            <p class="text-lg max-w-3xl mx-auto" style="color: var(--text-secondary)">${data.summary}</p>
         </div>
     `;
 
-    // 2. Loop Phases
+    // --- PROGRESS BAR (FLOATING STYLE) ---
+    // This creates the bar shown in your reference image
+    html += `
+        <div class="sticky top-24 z-30 max-w-5xl mx-auto mb-12 animate-fade-in-scale-up">
+            <div class="progress-floating-bar rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-6">
+                <!-- Left: Progress -->
+                <div class="w-full md:flex-1">
+                    <div class="flex justify-between text-xs font-bold tracking-wider mb-2" style="color: var(--text-secondary)">
+                        <span>PROGRESS</span>
+                        <span id="progress-text" style="color: var(--accent-teal)">0%</span>
+                    </div>
+                    <div class="w-full h-2.5 rounded-full bg-gray-700 overflow-hidden">
+                        <div id="progress-bar-inner" class="h-full bg-teal-500 transition-all duration-500 shadow-[0_0_10px_rgba(20,184,166,0.5)]" style="width: 0%"></div>
+                    </div>
+                </div>
+                <!-- Right: Buttons -->
+                <div class="flex gap-3 w-full md:w-auto justify-end">
+                    <button id="regenerate-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-right"></i> New
+                    </button>
+                    <button id="download-pdf-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                        <i class="fa-solid fa-file-pdf"></i> Save PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // --- GRID ---
+    html += `<div class="max-w-6xl mx-auto space-y-12">`;
+    
     data.milestones.forEach((phase, index) => {
         html += `
-            <div class="mb-12 animate-fade-in-up" style="animation-delay: ${index * 100}ms">
-                <div class="flex items-center gap-3 mb-6 border-b border-gray-700 pb-2">
-                    <div class="w-8 h-8 rounded-full bg-teal-500/20 text-teal-500 flex items-center justify-center font-bold text-sm">${index + 1}</div>
-                    <h2 class="text-2xl font-bold" style="color: var(--text-primary);">${phase.title}</h2>
+            <div class="animate-fade-in-scale-up" style="animation-delay: ${index * 100}ms">
+                <div class="flex items-center gap-3 mb-6 border-b pb-2" style="border-color: var(--border-color)">
+                    <div class="w-8 h-8 rounded-full bg-teal-500/10 text-teal-500 flex items-center justify-center font-bold text-sm border border-teal-500/20">${index + 1}</div>
+                    <h2 class="text-xl font-bold" style="color: var(--text-primary)">${phase.title}</h2>
                 </div>
                 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                     ${phase.skills.map(skill => {
                         const isCompleted = skill.status === 'completed';
-                        // Conditional Classes
-                        const borderClass = isCompleted ? 'border-orange-500' : 'border-gray-700';
-                        const bgClass = isCompleted ? 'bg-orange-500/10' : 'bg-[#1e293b]';
-                        const dotClass = isCompleted ? 'bg-orange-500 shadow-[0_0_10px_#f97316]' : 'bg-gray-600';
-                        const iconClass = isCompleted ? 'fa-check text-orange-500' : 'fa-angle-right text-gray-500';
+                        const iconClass = isCompleted ? 'fa-circle-check text-orange-500' : 'fa-circle text-gray-600';
                         
                         return `
-                        <div class="skill-card p-5 rounded-xl cursor-pointer border ${borderClass} ${bgClass} flex flex-col justify-between group" onclick="openSkillModal('${skill.id}')">
+                        <div class="skill-card p-5 rounded-xl cursor-pointer flex flex-col justify-between group ${isCompleted ? 'completed' : ''}" data-id="${skill.id}">
                             <div class="flex justify-between items-start mb-4">
-                                <h3 class="font-semibold text-sm pr-2 group-hover:text-teal-400 transition-colors" style="color: var(--text-primary);">${skill.title}</h3>
-                                <i class="fa-solid ${iconClass} text-sm"></i>
+                                <h3 class="font-semibold text-sm pr-2 group-hover:text-teal-500 transition-colors" style="color: var(--text-primary)">${skill.title}</h3>
+                                <i class="fa-regular ${iconClass} text-sm transition-colors"></i>
                             </div>
                             <div class="flex justify-between items-end">
-                                <span class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Click for details</span>
-                                <div class="status-dot w-2 h-2 rounded-full ${dotClass}"></div>
+                                <span class="text-[10px] uppercase tracking-wider font-bold opacity-0 group-hover:opacity-100 transition-opacity" style="color: var(--text-secondary)">View Details</span>
+                                <div class="status-dot w-2 h-2 rounded-full"></div>
                             </div>
                         </div>
                         `;
                     }).join('')}
                 </div>
-            </div>
-        `;
+            </div>`;
+    });
+    html += '</div>';
+    
+    el('roadmap-grid-container').innerHTML = html;
+    
+    // Re-attach listeners to the new buttons inside the HTML
+    el('regenerate-btn-inner').addEventListener('click', () => {
+        el('roadmap-content').classList.add('hidden'); 
+        el('questionnaire-container').classList.remove('hidden'); 
+    });
+    el('download-pdf-btn-inner').addEventListener('click', handleDownloadPdf);
+    
+    document.querySelectorAll('.skill-card').forEach(card => {
+        card.addEventListener('click', () => openSkillModal(card.dataset.id));
     });
 
-    el('roadmap-grid-container').innerHTML = html;
     updateProgress();
 }
 
 function openSkillModal(id) {
+    if(!currentRoadmap) return;
     let skill = null;
     currentRoadmap.milestones.forEach(m => {
         const found = m.skills.find(s => s.id === id);
@@ -243,37 +284,33 @@ function openSkillModal(id) {
     el('modal-title').textContent = skill.title;
     el('modal-description').textContent = skill.description;
     
-    // Stats Grid
     el('modal-details-grid').innerHTML = `
-        <div class="p-3 rounded-lg bg-gray-800/50 border border-gray-700">
-            <div class="text-xs text-gray-400 uppercase mb-1">Est. Salary</div>
-            <div class="font-bold text-white">${skill.salary_pkr}</div>
+        <div class="p-3 rounded-lg border" style="background-color: var(--bg-primary); border-color: var(--border-color)">
+            <div class="text-xs uppercase mb-1" style="color: var(--text-secondary)">Est. Salary</div>
+            <div class="font-bold" style="color: var(--text-primary)">${skill.salary_pkr}</div>
         </div>
-        <div class="p-3 rounded-lg bg-gray-800/50 border border-gray-700">
-            <div class="text-xs text-gray-400 uppercase mb-1">Demand</div>
-            <div class="text-yellow-400 text-sm">${getStarIcons(skill.future_growth_rating)}</div>
+        <div class="p-3 rounded-lg border" style="background-color: var(--bg-primary); border-color: var(--border-color)">
+            <div class="text-xs uppercase mb-1" style="color: var(--text-secondary)">Demand</div>
+            <div class="text-yellow-400 text-sm">${createStars(skill.future_growth_rating)}</div>
         </div>
     `;
 
-    // Resources
     el('modal-resources').innerHTML = skill.resources.map(r => 
-        `<li class="flex items-center justify-between p-2 rounded hover:bg-gray-800 transition-colors">
-            <span class="text-gray-300">${r.name}</span>
-            <a href="${r.url}" target="_blank" class="text-teal-400 hover:text-teal-300"><i class="fa-solid fa-external-link-alt"></i></a>
+        `<li class="flex items-center justify-between p-2 rounded hover:bg-gray-700/10 transition-colors">
+            <span style="color: var(--text-primary)">${r.name}</span>
+            <a href="${r.url}" target="_blank" class="text-teal-500 hover:text-orange-500 transition-colors"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
         </li>`
     ).join('');
 
-    // Button Logic
     const btn = el('modal-complete-btn');
     btn.onclick = () => toggleSkillComplete(skill.id);
     
     if(skill.status === 'completed') {
         btn.textContent = 'Mark as Incomplete';
-        btn.className = 'w-full py-3 rounded-lg font-bold border-2 border-orange-500 text-orange-500 hover:bg-orange-500/10 transition-all';
+        btn.className = 'w-full py-3 rounded-lg font-bold border-2 border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white transition-all';
     } else {
         btn.textContent = 'Mark as Completed';
-        // Consistent hover effect requested by user
-        btn.className = 'w-full py-3 rounded-lg font-bold bg-teal-600 text-white hover:bg-teal-500 transition-all shadow-lg';
+        btn.className = 'w-full py-3 rounded-lg font-bold btn-primary hover:shadow-lg transition-all';
     }
 
     el('skill-modal-overlay').classList.remove('hidden');
@@ -298,8 +335,10 @@ function updateProgress() {
     const bar = el('progress-bar-inner');
     if(bar) {
         bar.style.width = `${pct}%`;
-        // Use Teal for progress bar (User requested greenish/theme color)
-        bar.className = 'h-full bg-teal-500 transition-all duration-500 shadow-[0_0_10px_rgba(20,184,166,0.5)]'; 
+        // If completed, turn bar orange, else teal
+        if(pct > 0) {
+             bar.className = 'h-full transition-all duration-500 bg-gradient-to-r from-teal-500 to-teal-400'; 
+        }
     }
     if(el('progress-text')) el('progress-text').textContent = `${pct}%`;
 
@@ -309,33 +348,23 @@ function updateProgress() {
     }
 }
 
-// --- EVENT SETUP ---
+// --- HELPERS ---
 function setupEventListeners() {
-    // Modals
     el('login-btn-header').onclick = () => el('email-modal-overlay').classList.remove('hidden');
     el('info-login-btn').onclick = () => { el('info-modal-overlay').classList.add('hidden'); el('email-modal-overlay').classList.remove('hidden'); };
     el('info-close-btn').onclick = () => el('info-modal-overlay').classList.add('hidden');
     el('email-cancel-btn').onclick = () => el('email-modal-overlay').classList.add('hidden');
     el('modal-close-btn').onclick = () => el('skill-modal-overlay').classList.add('hidden');
     el('completion-close-btn').onclick = () => el('completion-modal-overlay').classList.add('hidden');
-    
-    // Forms
     el('email-form').addEventListener('submit', handleLogin);
     el('questionnaire-form').addEventListener('submit', handleFormSubmit);
-    
-    // Buttons
-    el('regenerate-btn').onclick = () => { 
-        el('roadmap-content').classList.add('hidden'); 
-        el('questionnaire-container').classList.remove('hidden'); 
-    };
     el('custom-alert-confirm-btn').onclick = hideCustomAlert;
     
-    // Scroll Header Logic
-    const appDiv = el('app'); // Main scroll container
+    // Header Scroll
+    const appDiv = el('app');
     appDiv.addEventListener('scroll', () => {
         const currentY = appDiv.scrollTop;
         const header = el('main-header');
-        
         if (currentY > lastScrollY && currentY > 50) {
             header.classList.add('hidden-header');
         } else {
@@ -344,41 +373,36 @@ function setupEventListeners() {
         lastScrollY = currentY;
     });
     
-    // Theme Toggle
+    // Theme
     el('theme-toggle').onclick = () => {
         const root = document.documentElement;
-        const icon = el('theme-toggle').querySelector('i');
-        
-        if (root.classList.contains('light-mode')) {
-            root.classList.remove('light-mode');
-            localStorage.setItem('theme', 'dark');
-            icon.className = 'fa-solid fa-moon text-xl';
-        } else {
-            root.classList.add('light-mode');
-            localStorage.setItem('theme', 'light');
-            icon.className = 'fa-solid fa-sun text-xl';
-        }
+        const isLight = root.classList.toggle('light-mode');
+        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        updateThemeIcon(isLight);
     };
 }
 
-// --- HELPER ---
-function getStarIcons(rating) {
-    let html = '';
-    for (let i = 0; i < 5; i++) {
-        if (i < Math.floor(rating)) html += '<i class="fa-solid fa-star"></i>';
-        else if (i === Math.floor(rating) && rating % 1 !== 0) html += '<i class="fa-solid fa-star-half-stroke"></i>';
-        else html += '<i class="fa-regular fa-star"></i>';
+function updateThemeIcon(isLight) {
+    const btn = el('theme-toggle');
+    if(isLight) {
+        btn.innerHTML = '<i class="fa-solid fa-sun text-yellow-500 text-xl"></i>';
+    } else {
+        btn.innerHTML = '<i class="fa-solid fa-moon text-gray-400 text-xl"></i>';
     }
-    return html;
+}
+
+function createStars(n) {
+    return '★'.repeat(Math.floor(n)) + (n % 1 ? '½' : '') + '☆'.repeat(5 - Math.ceil(n));
 }
 
 function showLoadingWithProgress() {
     el('api-loading-overlay').classList.remove('hidden');
     let w = 0;
     progressInterval = setInterval(() => {
-        if(w < 90) w += Math.random() * 3;
+        if(w < 95) w += Math.random() * 2;
         el('api-loading-progress-bar').style.width = `${w}%`;
-    }, 200);
+        el('api-loading-progress-text').textContent = `${Math.round(w)}%`;
+    }, 100);
     
     el('loading-message-container').textContent = animatedLoadingMessages[0];
     let i = 0;
@@ -392,7 +416,22 @@ function hideLoadingOverlay() {
     clearInterval(progressInterval);
     clearInterval(loadingMessageInterval);
     el('api-loading-progress-bar').style.width = '100%';
-    setTimeout(() => el('api-loading-overlay').classList.add('hidden'), 300);
+    setTimeout(() => el('api-loading-overlay').classList.add('hidden'), 400);
+}
+
+function checkUsageLimit() {
+    if (sessionStorage.getItem('isAdmin')) return true;
+    const ts = JSON.parse(localStorage.getItem('generationTimestamps') || '[]');
+    const valid = ts.filter(t => t > Date.now() - 3600000);
+    localStorage.setItem('generationTimestamps', JSON.stringify(valid));
+    return valid.length < 50;
+}
+
+function recordGeneration() {
+    if (sessionStorage.getItem('isAdmin')) return;
+    const ts = JSON.parse(localStorage.getItem('generationTimestamps') || '[]');
+    ts.push(Date.now());
+    localStorage.setItem('generationTimestamps', JSON.stringify(ts));
 }
 
 function showCustomAlert(title, msg) {
@@ -405,6 +444,11 @@ function hideCustomAlert() {
     el('custom-alert-overlay').classList.add('hidden');
 }
 
-function applyTranslations(lang) {
-    // Implementation if needed
+function handleDownloadPdf() {
+    // Re-use your existing PDF logic from previous steps
+    if (!currentRoadmap) return;
+    const element = el('roadmap-grid-container'); // Simple capture for now
+    html2pdf().from(element).save();
 }
+
+function applyTranslations(lang) {} // Placeholder

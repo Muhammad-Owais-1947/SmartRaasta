@@ -1,5 +1,5 @@
 // --- SCRIPT CONFIGURATION & CONSTANTS ---
-const WORKER_URL = 'https://smartrasta.timespace.workers.dev/';
+const WORKER_URL = 'https://smartrasta.timespace.workers.dev';
 const PDF_WATERMARK_TEXT = 'Smart Raasta Report';
 
 // --- MISSING ARRAY RESTORED HERE ---

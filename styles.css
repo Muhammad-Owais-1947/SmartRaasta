@@ -4,14 +4,14 @@
     --bg-secondary: #111827;
     --text-primary: #F9FAFB;
     --border-primary: #1f2937;
-    --header-bg: rgba(17, 24, 39, 0.8); 
+    --header-bg: rgba(17, 24, 39, 0.7); 
 }
 html.light-mode {
     --bg-primary: #f9fafb;
     --bg-secondary: #f3f4f6;
     --text-primary: #111827;
     --border-primary: #e5e7eb;
-    --header-bg: rgba(243, 244, 246, 0.8);
+    --header-bg: rgba(243, 244, 246, 0.7);
 }
 
 /* --- GENERAL LAYOUT --- */
@@ -19,34 +19,48 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    /* This background image provides the texture/gradient you wanted */
+    /* Enhanced Gradient Background */
     background-image: 
-        linear-gradient(rgba(3, 7, 18, 0.98), rgba(3, 7, 18, 0.98)),
-        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23111827' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2-H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        radial-gradient(circle at top center, rgba(20, 184, 166, 0.15), transparent 40%),
+        linear-gradient(to bottom, rgba(3, 7, 18, 0.95), rgba(17, 24, 39, 1)),
+        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231f2937' fill-opacity='0.2'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2-H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    background-attachment: fixed;
     transition: background-color 0.3s, color 0.3s;
-}
-html.light-mode body {
-     background-image: 
-        linear-gradient(rgba(249, 250, 251, 0.98), rgba(249, 250, 251, 0.98)),
-        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e5e7eb' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2-H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 }
 
 /* --- SCROLLBAR --- */
 ::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: var(--bg-secondary); }
-::-webkit-scrollbar-thumb { background: var(--border-primary); border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
 
 /* --- ANIMATIONS --- */
 @keyframes fadeInScaleUp {
-    from { opacity: 0; transform: scale(0.95); }
+    from { opacity: 0; transform: scale(0.98); }
     to { opacity: 1; transform: scale(1); }
 }
-.animate-fade-in-scale-up { animation: fadeInScaleUp 0.4s ease-out forwards; }
+.animate-fade-in-scale-up { animation: fadeInScaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
-/* --- HEADER --- */
-#main-header { 
-    backdrop-filter: blur(8px);
-    background-color: var(--header-bg);
+@keyframes scaleUp {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
 }
-#main-header.hidden-header { transform: translateY(-100%); }
+.animate-scale-up { animation: scaleUp 0.3s ease-out forwards; }
+
+@keyframes bounceIn {
+    0% { transform: scale(0.3); opacity: 0; }
+    50% { transform: scale(1.05); opacity: 1; }
+    70% { transform: scale(0.9); }
+    100% { transform: scale(1); }
+}
+.animate-bounce-in { animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards; }
+
+/* --- HEADER BLUR --- */
+#main-header { 
+    backdrop-filter: blur(12px);
+    background-color: var(--header-bg);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.2); border-radius: 3px; }

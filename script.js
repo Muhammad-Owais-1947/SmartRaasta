@@ -22,25 +22,24 @@ let isCompletionPopupShown = false;
 let confirmCallback = null;
 let progressInterval = null;
 let loadingMessageInterval = null;
+let lastScrollY = 0; // Track scroll position
 
-// --- DOM SELECTORS (Safe Selection) ---
+// --- DOM SELECTORS ---
 const el = id => document.getElementById(id);
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Setup Theme & Lang
     if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light-mode');
-    
-    // 2. Remove Loading Screen FAST (Fixes 15s delay issue)
+    applyTranslations(localStorage.getItem('lang') || 'en');
+
+    // Fast load
     setTimeout(() => {
         const ls = el('loading-screen');
         if(ls) ls.classList.add('opacity-0', 'pointer-events-none');
     }, 800);
 
-    // 3. Check Auth in Background
     await checkAuth();
 
-    // 4. Show Info Modal if first visit and not logged in
     if (!currentUserEmail && !localStorage.getItem('visitedBefore')) {
         setTimeout(() => {
             el('info-modal-overlay').classList.remove('hidden');
@@ -48,29 +47,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 1500);
     }
 
-    // 5. Setup ALL Listeners
     setupEventListeners();
 });
 
-// --- AUTH & SAVE LOGIC ---
+// --- AUTH ---
 async function checkAuth() {
     try {
-        // This ping does NOT count towards rate limit
         const res = await fetch(`${WORKER_URL}/load`, { method: 'GET', credentials: 'include' });
         if (res.ok) {
             const data = await res.json();
             currentUserEmail = data.email;
             updateHeaderState();
-            
-            // If saved data exists, show it immediately
             if (data.data && data.data.milestones) {
                 renderRoadmap(data.data);
                 el('questionnaire-container').classList.add('hidden');
             }
         }
-    } catch (e) {
-        console.log("User is guest or auth failed");
-    }
+    } catch (e) { console.log("Guest mode"); }
 }
 
 async function handleLogin(e) {
@@ -93,23 +86,20 @@ async function handleLogin(e) {
 
         if (!res.ok) throw new Error('Login failed');
 
-        // Success
         currentUserEmail = emailVal;
         updateHeaderState();
         el('email-modal-overlay').classList.add('hidden');
-        el('info-modal-overlay').classList.add('hidden'); // Ensure info modal closes too
+        el('info-modal-overlay').classList.add('hidden');
 
-        // If we have a roadmap on screen, save it now
         if (currentRoadmap) {
             await saveRoadmapToCloud();
-            showCustomAlert("Success", "Your roadmap is now saved!");
+            showCustomAlert("Success", "Your roadmap has been saved!");
         } else {
-            // If screen is empty, reload to see if account has data
             await checkAuth();
         }
 
     } catch (error) {
-        showCustomAlert('Login Error', 'Could not verify email. Please try again.');
+        showCustomAlert('Login Error', 'Could not verify email.');
     } finally {
         btn.textContent = originalText;
         btn.disabled = false;
@@ -125,13 +115,12 @@ async function saveRoadmapToCloud() {
             body: JSON.stringify({ roadmap: currentRoadmap }),
             credentials: 'include'
         });
-    } catch (e) { console.error("Background save failed", e); }
+    } catch (e) {}
 }
 
 function updateHeaderState() {
     const loginBtn = el('login-btn-header');
     const emailDisplay = el('user-email-display');
-    
     if (currentUserEmail) {
         loginBtn.classList.add('hidden');
         emailDisplay.textContent = currentUserEmail;
@@ -142,15 +131,13 @@ function updateHeaderState() {
     }
 }
 
-// --- GENERATION LOGIC ---
+// --- GENERATION ---
 async function handleFormSubmit(e) {
     if(e) e.preventDefault();
-    
     showLoadingWithProgress();
     el('generate-btn').disabled = true;
 
     const lang = localStorage.getItem('lang') || 'en';
-    
     try {
         const payload = {
             goal: el('career-goal').value,
@@ -173,44 +160,42 @@ async function handleFormSubmit(e) {
         }
 
         const roadmap = await res.json();
-        
         if (!roadmap.milestones) throw new Error("Invalid structure");
         
+        recordGeneration();
         renderRoadmap(roadmap);
         el('questionnaire-container').classList.add('hidden');
         
-        // Auto-save
         if(currentUserEmail) saveRoadmapToCloud();
 
     } catch (error) {
-        showCustomAlert("Error", error.message || "Something went wrong.");
+        showCustomAlert("Error", error.message);
     } finally {
         hideLoadingOverlay();
         el('generate-btn').disabled = false;
     }
 }
 
-// --- UI RENDERING ---
+// --- RENDER ---
 function renderRoadmap(data) {
     currentRoadmap = data;
     const roadmapContent = el('roadmap-content');
     roadmapContent.classList.remove('hidden');
     
-    // Setup Progress UI
     const progContainer = el('progress-container');
+    // Using orange gradient for the progress bar to match completion theme
     progContainer.innerHTML = `
         <div class="flex justify-between mb-2 text-teal-400 font-semibold">
             <span>Progress</span><span id="progress-text">0%</span>
         </div>
         <div class="w-full bg-gray-700 rounded-full h-3 overflow-hidden border border-gray-600">
-            <div id="progress-bar-inner" class="bg-gradient-to-r from-teal-500 to-emerald-400 h-full transition-all duration-500 shadow-[0_0_10px_rgba(20,184,166,0.5)]" style="width: 0%"></div>
+            <div id="progress-bar-inner" class="bg-gradient-to-r from-orange-500 to-amber-400 h-full transition-all duration-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]" style="width: 0%"></div>
         </div>`;
 
-    // Build Grid
     let html = `
         <div class="space-y-12 animate-fade-in-scale-up">
             <div class="text-center sm:text-left border-b border-white/10 pb-8">
-                <h1 class="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 mb-4">${data.name}</h1>
+                <h1 class="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300 mb-4">${data.name}</h1>
                 <p class="text-xl text-gray-300 max-w-3xl leading-relaxed">${data.summary}</p>
             </div>`;
 
@@ -223,11 +208,11 @@ function renderRoadmap(data) {
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-stretch">
                     ${phase.skills.map(skill => `
-                        <div class="skill-card group p-6 rounded-2xl cursor-pointer bg-gray-800/50 border border-white/5 hover:border-teal-500/50 hover:bg-gray-800 transition-all duration-300 relative overflow-hidden ${skill.status === 'completed' ? 'ring-2 ring-teal-500 border-teal-500 bg-teal-900/10' : ''}" data-id="${skill.id}">
+                        <div class="skill-card group p-6 rounded-2xl cursor-pointer transition-all duration-300 relative overflow-hidden flex flex-col justify-between ${skill.status === 'completed' ? 'completed' : ''}" data-id="${skill.id}">
                             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-teal-500 to-emerald-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
-                            <p class="font-semibold text-white mb-8 text-lg group-hover:text-teal-300 transition-colors">${skill.title}</p>
+                            <p class="font-semibold text-white mb-8 text-lg transition-colors">${skill.title}</p>
                             <div class="absolute bottom-6 right-6">
-                                <div class="status-dot w-4 h-4 rounded-full border-2 border-gray-700 ${skill.status === 'completed' ? 'bg-teal-500 border-teal-500 shadow-[0_0_12px_rgba(20,184,166,0.8)]' : 'bg-transparent'} transition-all duration-300"></div>
+                                <div class="status-dot w-4 h-4 rounded-full border-2 border-gray-700 bg-transparent transition-all duration-300"></div>
                             </div>
                         </div>
                     `).join('')}
@@ -240,7 +225,6 @@ function renderRoadmap(data) {
     el('regenerate-section').classList.remove('hidden');
     el('pdf-controls').classList.remove('hidden');
     
-    // Card Click Listeners
     document.querySelectorAll('.skill-card').forEach(card => {
         card.addEventListener('click', () => openSkillModal(card.dataset.id));
     });
@@ -287,10 +271,11 @@ function openSkillModal(id) {
     
     if(skill.status === 'completed') {
         btn.textContent = 'Mark as Incomplete';
-        btn.className = 'w-full py-4 rounded-xl font-bold border-2 border-yellow-600/50 text-yellow-500 hover:bg-yellow-900/20 transition-all';
+        btn.className = 'w-full py-4 rounded-xl font-bold border-2 border-gray-600 text-gray-400 hover:bg-gray-800 transition-all';
     } else {
         btn.textContent = 'Complete Skill';
-        btn.className = 'w-full py-4 rounded-xl font-bold bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white shadow-lg transition-all';
+        // Orange button for action
+        btn.className = 'w-full py-4 rounded-xl font-bold bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white shadow-lg transition-all';
     }
 
     el('skill-modal-overlay').classList.remove('hidden');
@@ -313,8 +298,13 @@ function updateProgress() {
     const done = all.filter(s => s.status === 'completed');
     const pct = all.length > 0 ? Math.round((done.length / all.length) * 100) : 0;
     
-    el('progress-bar-inner').style.width = `${pct}%`;
-    el('progress-text').textContent = `${pct}%`;
+    const bar = el('progress-bar-inner');
+    if(bar) {
+        bar.style.width = `${pct}%`;
+        // Match the progress bar color to the orange completion theme
+        bar.className = 'h-full transition-all duration-500 shadow-[0_0_10px_rgba(245,158,11,0.5)] bg-gradient-to-r from-orange-500 to-amber-400';
+    }
+    if(el('progress-text')) el('progress-text').textContent = `${pct}%`;
 
     if(pct === 100 && !isCompletionPopupShown) {
         el('completion-modal-overlay').classList.remove('hidden');
@@ -322,7 +312,7 @@ function updateProgress() {
     }
 }
 
-// --- SETUP ---
+// --- EVENT SETUP ---
 function setupEventListeners() {
     // Modals
     el('login-btn-header').onclick = () => el('email-modal-overlay').classList.remove('hidden');
@@ -332,14 +322,39 @@ function setupEventListeners() {
     el('modal-close-btn').onclick = () => el('skill-modal-overlay').classList.add('hidden');
     el('completion-close-btn').onclick = () => el('completion-modal-overlay').classList.add('hidden');
     
-    // Actions
+    // Forms
     el('email-form').addEventListener('submit', handleLogin);
     el('questionnaire-form').addEventListener('submit', handleFormSubmit);
+    
+    // Actions
     el('regenerate-btn').onclick = () => { 
         el('roadmap-content').classList.add('hidden'); 
         el('questionnaire-container').classList.remove('hidden'); 
     };
     el('custom-alert-confirm-btn').onclick = hideCustomAlert;
+    
+    // Header Scroll Logic
+    const roadmapDiv = el('roadmap-content');
+    const qDiv = el('questionnaire-container');
+    
+    const onScroll = (e) => {
+        const target = e.target;
+        const currentY = target.scrollTop;
+        const header = el('main-header');
+        
+        if (!header) return;
+        
+        // Hide on scroll down (> 50px to avoid jitter), Show on scroll up
+        if (currentY > lastScrollY && currentY > 50) {
+            header.classList.add('hidden-header');
+        } else {
+            header.classList.remove('hidden-header');
+        }
+        lastScrollY = currentY;
+    };
+
+    if(roadmapDiv) roadmapDiv.addEventListener('scroll', onScroll);
+    if(qDiv) qDiv.addEventListener('scroll', onScroll);
     
     // Theme
     el('theme-toggle').onclick = () => {
@@ -348,7 +363,7 @@ function setupEventListeners() {
     };
 }
 
-// --- HELPERS ---
+// --- UTILS ---
 function createStars(n) {
     return '★'.repeat(Math.floor(n)) + (n % 1 ? '½' : '') + '☆'.repeat(5 - Math.ceil(n));
 }
@@ -377,6 +392,21 @@ function hideLoadingOverlay() {
     setTimeout(() => el('api-loading-overlay').classList.add('hidden'), 400);
 }
 
+function checkUsageLimit() {
+    if (sessionStorage.getItem('isAdmin')) return true;
+    const ts = JSON.parse(localStorage.getItem('generationTimestamps') || '[]');
+    const valid = ts.filter(t => t > Date.now() - 3600000);
+    localStorage.setItem('generationTimestamps', JSON.stringify(valid));
+    return valid.length < 50;
+}
+
+function recordGeneration() {
+    if (sessionStorage.getItem('isAdmin')) return;
+    const ts = JSON.parse(localStorage.getItem('generationTimestamps') || '[]');
+    ts.push(Date.now());
+    localStorage.setItem('generationTimestamps', JSON.stringify(ts));
+}
+
 function showCustomAlert(title, msg) {
     el('custom-alert-title').textContent = title;
     el('custom-alert-message').textContent = msg;
@@ -385,4 +415,8 @@ function showCustomAlert(title, msg) {
 
 function hideCustomAlert() {
     el('custom-alert-overlay').classList.add('hidden');
+}
+
+function applyTranslations(lang) {
+    // Add logic if needed
 }

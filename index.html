@@ -5,191 +5,197 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Raasta - Your Career Roadmap</title>
     <meta name="description" content="Smart Raasta generates a personalized career roadmap for the Pakistani job market.">
-    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='1' x2='1' y2='0'%3E%3Cstop stop-color='%230d9488'/%3E%3Cstop offset='1' stop-color='%2314b8a6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M20 80 L 45 55 L 60 70 L 80 20' stroke='url(%23g)' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='20' cy='80' r='8' fill='%23f9fafb' stroke='url(%23g)' stroke-width='4'/%3E%3Ccircle cx='45' cy='55' r='6' fill='%2314b8a6'/%3E%3Ccircle cx='60' cy='70' r='6' fill='%2314b8a6'/%3E%3Ccircle cx='80' cy='20' r='8' fill='%2314b8a6'/%3E%3C/svg%3E" type="image/svg+xml">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
-<!-- FIX: Removed bg-gray-900 so CSS gradient works -->
-<body class="overflow-hidden h-screen text-white">
+<body class="h-screen overflow-hidden text-white">
     
+    <!-- GLOBAL HEADER (ALWAYS VISIBLE) -->
+    <header id="main-header" class="fixed top-0 left-0 right-0 p-4 sm:px-6 z-[100] transition-all duration-300 border-b border-white/10">
+        <div class="flex justify-between items-center max-w-7xl mx-auto">
+            <a href="#" class="flex items-center gap-2 group">
+                <svg class="h-8 w-auto transition-transform group-hover:scale-110" viewBox="0 0 100 100"><use href="#favicon-path" /></svg>
+                <span class="text-xl font-bold text-white tracking-tight">Smart Raasta</span>
+            </a>
+            <div class="flex items-center gap-3 sm:gap-4">
+                <!-- Login Button -->
+                <button id="login-btn-header" class="bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold py-2 px-4 rounded-lg transition-colors shadow-lg shadow-teal-900/50">Login</button>
+                <div id="user-email-display" class="hidden text-sm text-gray-300 font-medium bg-gray-800/50 px-3 py-1 rounded-full border border-gray-700"></div>
+                
+                <!-- Theme Toggle -->
+                <button id="theme-toggle" class="relative w-10 h-10 rounded-full bg-gray-800/50 flex items-center justify-center border border-gray-700 hover:bg-gray-700 transition-colors">
+                    <svg class="w-5 h-5 text-yellow-400 sun-icon absolute" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                    <svg class="w-5 h-5 text-gray-300 moon-icon absolute" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                </button>
+                <!-- Lang Toggle -->
+                <button id="lang-toggle" class="bg-gray-800/50 text-white font-semibold py-2 px-3 rounded-lg text-sm border border-gray-700 hover:bg-gray-700 transition-colors">EN</button>
+            </div>
+        </div>
+    </header>
+
     <!-- Loading Screen -->
-    <div id="loading-screen" class="fixed inset-0 flex flex-col justify-center items-center z-50 bg-gray-900">
-        <div class="spinner w-12 h-12 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div>
-        <p class="mt-4 text-lg text-gray-300">Smart Raasta is waking up...</p>
+    <div id="loading-screen" class="fixed inset-0 flex flex-col justify-center items-center z-[200] bg-gray-950">
+        <div class="spinner w-16 h-16 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div>
+        <p class="mt-6 text-xl font-light text-gray-300 tracking-wider">Initializing Smart Raasta...</p>
     </div>
 
     <!-- API Processing Overlay -->
-    <div id="api-loading-overlay" class="hidden fixed inset-0 bg-black bg-opacity-90 flex justify-center items-center z-40 p-4">
+    <div id="api-loading-overlay" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-6">
         <div class="w-full max-w-md text-center">
-            <div class="spinner w-12 h-12 rounded-full mx-auto border-4 border-teal-500 border-t-transparent animate-spin"></div>
-            <p id="loading-message-container" class="mt-4 text-lg h-6 text-white font-medium"></p>
-            <div class="w-full bg-gray-700 rounded-full h-2.5 mt-4">
-                <div id="api-loading-progress-bar" class="bg-teal-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+            <div class="spinner w-16 h-16 rounded-full mx-auto border-4 border-teal-500 border-t-transparent animate-spin mb-6"></div>
+            <p id="loading-message-container" class="text-xl font-medium text-white h-8 mb-4">Preparing your future...</p>
+            <div class="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
+                <div id="api-loading-progress-bar" class="bg-teal-500 h-full transition-all duration-300 ease-out" style="width: 0%"></div>
             </div>
-            <p id="api-loading-progress-text" class="text-sm text-gray-400 mt-2">0%</p>
+            <p id="api-loading-progress-text" class="text-sm text-gray-400 mt-2 font-mono">0%</p>
         </div>
     </div>
 
-    <!-- Questionnaire Modal -->
-    <div id="questionnaire-modal-overlay" class="hidden fixed inset-0 flex justify-center items-center z-30 p-4 bg-black bg-opacity-80 backdrop-blur-sm">
-        <div class="w-full max-w-4xl bg-gray-900 rounded-xl shadow-2xl overflow-hidden md:grid md:grid-cols-2 border border-gray-800 animate-fade-in-scale-up">
-            <div class="hidden md:flex flex-col justify-center p-8 lg:p-12 bg-gray-800 relative overflow-hidden">
-                <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Cg fill=%22%23fff%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%221%22/%3E%3Ccircle cx=%2210%22 cy=%2210%22 r=%221%22/%3E%3Ccircle cx=%2290%22 cy=%2210%22 r=%221%22/%3E%3C/g%3E%3C/svg%3E');"></div>
-                <h2 class="text-3xl md:text-4xl font-bold text-white relative z-10">Smart Raasta</h2>
-                <p class="mt-4 text-gray-400 relative z-10">Made with pride in Pakistan to help Pakistan’s youth find their Smart Raasta.</p>
+    <!-- Main Container (Scrollable) -->
+    <div id="app" class="flex flex-col h-screen w-full pt-20"> <!-- Padding top for fixed header -->
+        
+        <!-- Questionnaire Section (Initially Visible) -->
+        <div id="questionnaire-container" class="flex-1 flex items-center justify-center p-4 overflow-y-auto">
+            <div class="w-full max-w-4xl bg-gray-900/60 backdrop-blur-md rounded-2xl shadow-2xl border border-white/10 overflow-hidden md:grid md:grid-cols-2 animate-fade-in-scale-up">
+                <!-- Left Side: Hero -->
+                <div class="hidden md:flex flex-col justify-center p-10 bg-gradient-to-br from-teal-900/40 to-gray-900/40 relative">
+                    <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
+                    <h2 class="text-4xl font-bold text-white mb-4 relative z-10 leading-tight">Shape Your Future</h2>
+                    <p class="text-gray-300 text-lg relative z-10">AI-powered career roadmaps tailored for the Pakistani market.</p>
+                </div>
+                <!-- Right Side: Form -->
+                <div class="p-8">
+                    <h2 class="text-2xl font-bold text-white mb-2">Start Here</h2>
+                    <p class="text-gray-400 mb-6 text-sm">Tell us about your goals.</p>
+                    <form id="questionnaire-form" class="space-y-5">
+                        <div>
+                            <label class="block text-xs uppercase tracking-wide text-gray-500 font-bold mb-2">Career Field</label>
+                            <input type="text" id="career-goal" class="w-full bg-gray-800/50 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all" placeholder="e.g. Software Engineer" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs uppercase tracking-wide text-gray-500 font-bold mb-2">Interests (Optional)</label>
+                            <input type="text" id="user-interests" class="w-full bg-gray-800/50 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all" placeholder="e.g. AI, Web Design">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs uppercase tracking-wide text-gray-500 font-bold mb-2">Education</label>
+                                <select id="education-level" class="w-full bg-gray-800/50 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 outline-none">
+                                    <option>Matric / Inter</option><option selected>Bachelor's</option><option>Master's</option><option>PhD</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs uppercase tracking-wide text-gray-500 font-bold mb-2">Province</label>
+                                <select id="location" class="w-full bg-gray-800/50 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 outline-none">
+                                    <option>Punjab</option><option>Sindh</option><option>KP</option><option>Balochistan</option><option>GB/AJK</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" id="generate-btn" class="w-full bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white font-bold py-4 rounded-xl shadow-lg shadow-teal-900/50 transform transition-all hover:-translate-y-1">Generate Roadmap</button>
+                    </form>
+                </div>
             </div>
-            <div class="p-6 sm:p-8 relative">
-                <h2 class="text-2xl sm:text-3xl font-bold text-white mb-2" data-translate-key="questionnaire_title">Design Your Roadmap</h2>
-                <p class="text-gray-400 mb-6" data-translate-key="questionnaire_subtitle">Powered by AI designed for Pakistan’s job market.</p>
-                <form id="questionnaire-form">
-                    <div class="space-y-4">
-                        <div>
-                            <label for="career-goal" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="career_goal_label">Career Field</label>
-                            <input type="text" id="career-goal" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="e.g., Software Development" required>
-                        </div>
-                        <div>
-                            <label for="user-interests" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="interests_label">Interests (Optional)</label>
-                            <input type="text" id="user-interests" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="e.g., AI, Design">
-                        </div>
-                        <div>
-                            <label for="education-level" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="education_label">Education</label>
-                            <select id="education-level" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none">
-                                <option>Matric / Intermediate</option><option selected>Bachelor's Degree</option><option>Master's Degree</option><option>PhD</option><option>Vocational Training</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="location" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="province_label">Province</label>
-                            <select id="location" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none">
-                                <option>Punjab</option><option>Sindh</option><option>KP</option><option>Balochistan</option><option>Gilgit-Baltistan</option><option>AJK</option>
-                            </select>
-                        </div>
+        </div>
+
+        <!-- Roadmap Result Section (Initially Hidden) -->
+        <div id="roadmap-content" class="flex-grow overflow-y-auto px-4 pb-12 hidden">
+            <div class="max-w-7xl mx-auto mt-8">
+                <div class="flex flex-col sm:flex-row justify-between items-end gap-4 mb-8 bg-gray-900/60 p-6 rounded-xl border border-white/10 backdrop-blur-sm">
+                    <div id="progress-container" class="w-full sm:max-w-md"></div>
+                    <div id="pdf-controls" class="hidden animate-fade-in">
+                        <button id="download-pdf-btn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors shadow-md">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Save PDF
+                        </button>
                     </div>
-                    <button type="submit" id="generate-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg mt-6" data-translate-key="generate_button">Generate Roadmap</button>
-                </form>
+                </div>
+                
+                <div id="roadmap-grid-container"></div>
+                
+                <div id="regenerate-section" class="mt-16 text-center hidden animate-fade-in">
+                    <button id="regenerate-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg transition-colors inline-flex items-center gap-2 shadow-lg">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        Start New
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Login / Save Info Modal -->
-    <div id="info-modal-overlay" class="hidden fixed inset-0 flex justify-center items-center z-[60] p-4 bg-black bg-opacity-90 backdrop-blur-sm">
-        <div class="w-full max-w-md bg-gray-900 rounded-xl shadow-2xl p-8 border border-gray-800 animate-fade-in-scale-up text-center">
-            <div class="mb-4 text-teal-400 text-4xl"><i class="fas fa-save"></i></div>
-            <h2 class="text-2xl font-bold text-white mb-2">Save Your Roadmap</h2>
-            <p class="text-gray-300 mb-6">To save your progress and access it later, please login with your email. It's quick and secure!</p>
-            <div class="flex flex-col gap-3">
-                <button id="info-login-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg transition-colors">Login to Save</button>
-                <button id="info-close-btn" class="w-full bg-transparent border border-gray-600 hover:bg-gray-800 text-gray-400 font-semibold py-3 rounded-lg transition-colors">Continue as Guest</button>
+    <!-- MODALS -->
+    <!-- Email Login Modal -->
+    <div id="email-modal-overlay" class="hidden fixed inset-0 flex justify-center items-center z-[80] p-4 bg-black/90 backdrop-blur-md transition-opacity">
+        <div class="w-full max-w-md bg-gray-900 rounded-2xl shadow-2xl p-8 border border-gray-700 animate-scale-up">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-teal-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+                </div>
+                <h2 class="text-2xl font-bold text-white">Login to Save</h2>
+                <p class="text-gray-400 mt-2 text-sm">Your roadmap will be safely stored in the cloud.</p>
             </div>
-        </div>
-    </div>
-
-    <!-- Email Login Input Modal -->
-    <div id="email-modal-overlay" class="hidden fixed inset-0 flex justify-center items-center z-[70] p-4 bg-black bg-opacity-90 backdrop-blur-sm">
-        <div class="w-full max-w-md bg-gray-900 rounded-xl shadow-2xl p-8 border border-gray-800 animate-fade-in-scale-up">
-            <h2 class="text-2xl font-bold text-white mb-2">Login</h2>
-            <p class="text-gray-400 mb-6">We'll save your roadmap to this email.</p>
             <form id="email-form">
-                <input type="email" id="email-input" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 mb-4 focus:ring-2 focus:ring-teal-500 outline-none" placeholder="your@email.com" required>
-                <button type="submit" id="login-submit-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg transition-colors">Continue</button>
+                <input type="email" id="email-input" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-4 mb-4 focus:ring-2 focus:ring-teal-500 outline-none transition-all" placeholder="name@example.com" required>
+                <button type="submit" id="login-submit-btn" class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-4 rounded-xl transition-colors shadow-lg">Continue with Email</button>
             </form>
-            <button id="email-cancel-btn" class="w-full mt-3 text-gray-500 hover:text-white text-sm">Cancel</button>
+            <button id="email-cancel-btn" class="w-full mt-4 text-gray-500 hover:text-white text-sm font-medium transition-colors">Cancel</button>
         </div>
     </div>
 
-    <!-- Main App Area -->
-    <div id="app" class="flex flex-col h-screen w-full">
-        <main id="main-content" class="flex-1 flex flex-col overflow-hidden hidden">
-            <!-- Header -->
-            <header id="main-header" class="fixed top-0 left-0 right-0 p-4 sm:px-6 z-20 transition-all duration-300">
-                <div class="flex justify-between items-center max-w-7xl mx-auto">
-                    <a href="#" class="flex items-center gap-2">
-                        <svg class="h-8 w-auto" viewBox="0 0 100 100"><use href="#favicon-path" /></svg>
-                        <span class="text-xl font-bold text-white tracking-tight">Smart Raasta</span>
-                    </a>
-                    <div class="flex items-center gap-3 sm:gap-4">
-                        <!-- NEW Login Button in Header -->
-                        <button id="login-btn-header" class="bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold py-2 px-4 rounded-lg transition-colors shadow-md">Login</button>
-                        <div id="user-email-display" class="hidden text-sm text-gray-300 font-medium"></div>
-                        
-                        <button id="theme-toggle" class="relative w-12 h-6 rounded-full bg-gray-700 flex items-center p-1 transition-colors">
-                            <div class="absolute w-6 h-6 flex items-center justify-center"><svg class="w-4 h-4 text-yellow-400 sun-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div>
-                            <div class="absolute w-6 h-6 flex items-center justify-center"><svg class="w-4 h-4 text-gray-400 moon-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg></div>
-                        </button>
-                        <button id="lang-toggle" class="bg-gray-700 text-white font-semibold py-1 px-3 rounded-full text-sm border border-gray-600 hover:bg-gray-600 transition-colors">EN</button>
-                    </div>
-                </div>
-            </header>
-            
-            <!-- Roadmap Content -->
-            <div id="roadmap-content" class="flex-grow overflow-y-auto pt-24 px-4 pb-12">
-                <div class="max-w-7xl mx-auto">
-                    <div class="flex flex-col sm:flex-row justify-between items-end gap-4 mb-8">
-                        <div id="progress-container" class="w-full sm:max-w-md"></div>
-                        <div id="pdf-controls" class="hidden animate-fade-in-scale-up">
-                            <button id="download-pdf-btn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors shadow-md">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                Save PDF
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div id="roadmap-grid-container"></div>
-                    
-                    <div id="regenerate-section" class="mt-16 text-center hidden animate-fade-in-scale-up">
-                        <button id="regenerate-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg transition-colors inline-flex items-center gap-2 shadow-lg">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                            Start Over
-                        </button>
-                    </div>
-                </div>
+    <!-- Initial Info Modal -->
+    <div id="info-modal-overlay" class="hidden fixed inset-0 flex justify-center items-center z-[70] p-4 bg-black/80 backdrop-blur-sm">
+        <div class="w-full max-w-md bg-gray-900 rounded-2xl shadow-2xl p-8 border border-gray-700 animate-scale-up text-center">
+            <div class="mb-6 text-teal-400 text-5xl">💾</div>
+            <h2 class="text-2xl font-bold text-white mb-3">Save Your Progress?</h2>
+            <p class="text-gray-300 mb-8 leading-relaxed">Log in now to automatically save your roadmap. You can also continue as a guest and log in later.</p>
+            <div class="flex flex-col gap-3">
+                <button id="info-login-btn" class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-3 rounded-xl transition-colors">Login / Sign Up</button>
+                <button id="info-close-btn" class="w-full bg-transparent border border-gray-600 hover:bg-gray-800 text-gray-400 font-semibold py-3 rounded-xl transition-colors">Continue as Guest</button>
             </div>
-        </main>
+        </div>
     </div>
 
-    <!-- Hidden SVG Asset -->
+    <!-- Reusable SVG -->
     <svg style="display:none;"><symbol id="favicon-path" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#0d9488"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs><path d="M20 80 L 45 55 L 60 70 L 80 20" stroke="url(#g)" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="80" r="8" fill="#f9fafb" stroke="url(#g)" stroke-width="4"/><circle cx="45" cy="55" r="6" fill="#14b8a6"/><circle cx="60" cy="70" r="6" fill="#14b8a6"/><circle cx="80" cy="20" r="8" fill="#14b8a6"/></symbol></svg>
 
     <!-- Skill Modal -->
-    <div id="skill-modal-overlay" class="hidden fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-        <div id="skill-modal-content" class="bg-gray-900 border border-gray-800 rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
-            <div class="p-6 border-b border-gray-800 flex justify-between items-center">
+    <div id="skill-modal-overlay" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex justify-center items-center p-4 z-[90]">
+        <div id="skill-modal-content" class="bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh] animate-scale-up">
+            <div class="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-800/50">
                 <h2 id="modal-title" class="text-xl font-bold text-white"></h2>
-                <button id="modal-close-btn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                <button id="modal-close-btn" class="text-gray-400 hover:text-white text-2xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-700 transition-colors">&times;</button>
             </div>
-            <div class="p-6 overflow-y-auto">
-                <p id="modal-description" class="text-gray-300 mb-6"></p>
-                <div id="modal-details-grid" class="grid gap-4 mb-6"></div>
-                <h3 class="font-semibold text-white mb-2">Recommended Resources</h3>
-                <ul id="modal-resources" class="space-y-2"></ul>
+            <div class="p-8 overflow-y-auto custom-scrollbar">
+                <p id="modal-description" class="text-gray-300 mb-8 text-lg leading-relaxed"></p>
+                <div id="modal-details-grid" class="grid gap-4 mb-8"></div>
+                <h3 class="font-bold text-white mb-4 uppercase text-sm tracking-wide text-teal-500">Recommended Resources</h3>
+                <ul id="modal-resources" class="space-y-3"></ul>
             </div>
-            <div class="p-6 border-t border-gray-800">
-                <button id="modal-complete-btn" class="w-full py-3 rounded-lg font-bold transition-colors"></button>
+            <div class="p-6 border-t border-gray-800 bg-gray-800/30">
+                <button id="modal-complete-btn" class="w-full py-4 rounded-xl font-bold transition-colors shadow-lg"></button>
             </div>
         </div>
     </div>
 
     <!-- Completion Modal -->
-    <div id="completion-modal-overlay" class="hidden fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-        <div id="completion-modal-content" class="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center max-w-sm">
-            <div class="text-teal-500 mb-4 text-5xl">🎉</div>
-            <h2 class="text-2xl font-bold text-white mb-2" data-translate-key="completion_title">Congratulations!</h2>
-            <p class="text-gray-400 mb-6" data-translate-key="completion_subtitle">You have completed this roadmap.</p>
-            <button id="completion-close-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg">Awesome!</button>
+    <div id="completion-modal-overlay" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex justify-center items-center p-4 z-[90]">
+        <div id="completion-modal-content" class="bg-gray-900 border border-gray-700 rounded-2xl p-10 text-center max-w-sm animate-bounce-in">
+            <div class="text-6xl mb-6">🎉</div>
+            <h2 class="text-3xl font-bold text-white mb-3">Congratulations!</h2>
+            <p class="text-gray-400 mb-8">You have completed this entire roadmap. You are ready for the next step!</p>
+            <button id="completion-close-btn" class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-3 rounded-xl shadow-lg transition-colors">Awesome!</button>
         </div>
     </div>
 
     <!-- Custom Alert Modal -->
-    <div id="custom-alert-overlay" class="hidden fixed inset-0 bg-black bg-opacity-90 z-[100] flex justify-center items-center p-4">
-        <div id="custom-alert-content" class="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-sm w-full text-center shadow-xl transform transition-all">
+    <div id="custom-alert-overlay" class="hidden fixed inset-0 bg-black/90 z-[200] flex justify-center items-center p-4">
+        <div id="custom-alert-content" class="bg-gray-900 border border-gray-700 rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl transform transition-all scale-100">
             <h3 id="custom-alert-title" class="text-xl font-bold text-white mb-2">Alert</h3>
-            <p id="custom-alert-message" class="text-gray-300 mb-6"></p>
+            <p id="custom-alert-message" class="text-gray-300 mb-8"></p>
             <div class="flex justify-center gap-4">
-                <button id="custom-alert-cancel-btn" class="hidden px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white transition-colors">Cancel</button>
-                <button id="custom-alert-confirm-btn" class="px-6 py-2 bg-teal-600 hover:bg-teal-500 rounded text-white font-bold transition-colors">OK</button>
+                <button id="custom-alert-cancel-btn" class="hidden px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-xl text-white transition-colors font-medium">Cancel</button>
+                <button id="custom-alert-confirm-btn" class="px-8 py-3 bg-teal-600 hover:bg-teal-500 rounded-xl text-white font-bold transition-colors shadow-lg">OK</button>
             </div>
         </div>
     </div>

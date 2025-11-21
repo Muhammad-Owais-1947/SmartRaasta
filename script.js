@@ -3,16 +3,11 @@ const WORKER_URL = 'https://smartrasta.timespace.workers.dev';
 const PDF_WATERMARK_TEXT = 'Smart Raasta Report';
 
 const animatedLoadingMessages = [
-    "Analyzing local job market trends...",
-    "Consulting AI career strategists...",
-    "Mapping skills to opportunities...",
-    "Tailoring your personalized path...",
-    "Identifying key growth areas...",
-    "Compiling relevant resources...",
-    "Forecasting salary expectations...",
+    "Analyzing market trends...",
+    "Curating best resources...",
     "Structuring your milestones...",
-    "Finalizing your career blueprint...",
-    "Almost there, preparing your Raasta..."
+    "Mapping career path...",
+    "Finalizing your roadmap..."
 ];
 
 // --- STATE ---
@@ -22,17 +17,23 @@ let isCompletionPopupShown = false;
 let confirmCallback = null;
 let progressInterval = null;
 let loadingMessageInterval = null;
-let lastScrollY = 0; // Track scroll position
+let lastScrollY = 0;
 
 // --- DOM SELECTORS ---
 const el = id => document.getElementById(id);
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', async () => {
-    if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light-mode');
-    applyTranslations(localStorage.getItem('lang') || 'en');
-
-    // Fast load
+    if (localStorage.getItem('theme') === 'light') {
+        document.documentElement.classList.add('light-mode');
+        const moonIcon = document.querySelector('.fa-moon');
+        if(moonIcon) {
+            moonIcon.classList.remove('fa-moon');
+            moonIcon.classList.add('fa-sun');
+        }
+    }
+    
+    // Remove Loading Screen Fast
     setTimeout(() => {
         const ls = el('loading-screen');
         if(ls) ls.classList.add('opacity-0', 'pointer-events-none');
@@ -40,6 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await checkAuth();
 
+    // First visit check
     if (!currentUserEmail && !localStorage.getItem('visitedBefore')) {
         setTimeout(() => {
             el('info-modal-overlay').classList.remove('hidden');
@@ -50,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
 });
 
-// --- AUTH ---
+// --- AUTH LOGIC ---
 async function checkAuth() {
     try {
         const res = await fetch(`${WORKER_URL}/load`, { method: 'GET', credentials: 'include' });
@@ -58,12 +60,13 @@ async function checkAuth() {
             const data = await res.json();
             currentUserEmail = data.email;
             updateHeaderState();
+            
             if (data.data && data.data.milestones) {
                 renderRoadmap(data.data);
                 el('questionnaire-container').classList.add('hidden');
             }
         }
-    } catch (e) { console.log("Guest mode"); }
+    } catch (e) { console.log("Guest or Network Error"); }
 }
 
 async function handleLogin(e) {
@@ -93,13 +96,13 @@ async function handleLogin(e) {
 
         if (currentRoadmap) {
             await saveRoadmapToCloud();
-            showCustomAlert("Success", "Your roadmap has been saved!");
+            showCustomAlert("Success", "Roadmap saved successfully!");
         } else {
             await checkAuth();
         }
 
     } catch (error) {
-        showCustomAlert('Login Error', 'Could not verify email.');
+        showCustomAlert('Error', 'Login failed. Please try again.');
     } finally {
         btn.textContent = originalText;
         btn.disabled = false;
@@ -121,13 +124,17 @@ async function saveRoadmapToCloud() {
 function updateHeaderState() {
     const loginBtn = el('login-btn-header');
     const emailDisplay = el('user-email-display');
+    const emailText = el('user-email-text');
+    
     if (currentUserEmail) {
         loginBtn.classList.add('hidden');
-        emailDisplay.textContent = currentUserEmail;
+        emailText.textContent = currentUserEmail;
         emailDisplay.classList.remove('hidden');
+        emailDisplay.classList.add('flex');
     } else {
         loginBtn.classList.remove('hidden');
         emailDisplay.classList.add('hidden');
+        emailDisplay.classList.remove('flex');
     }
 }
 
@@ -137,7 +144,7 @@ async function handleFormSubmit(e) {
     showLoadingWithProgress();
     el('generate-btn').disabled = true;
 
-    const lang = localStorage.getItem('lang') || 'en';
+    const lang = 'en'; // Default to English as per request/simplification
     try {
         const payload = {
             goal: el('career-goal').value,
@@ -154,22 +161,18 @@ async function handleFormSubmit(e) {
             credentials: 'include'
         });
 
-        if (!res.ok) {
-            const txt = await res.json();
-            throw new Error(txt.error || 'Generation failed');
-        }
+        if (!res.ok) throw new Error('Generation failed');
 
         const roadmap = await res.json();
-        if (!roadmap.milestones) throw new Error("Invalid structure");
+        if (!roadmap.milestones) throw new Error("Invalid AI response");
         
-        recordGeneration();
         renderRoadmap(roadmap);
         el('questionnaire-container').classList.add('hidden');
         
         if(currentUserEmail) saveRoadmapToCloud();
 
     } catch (error) {
-        showCustomAlert("Error", error.message);
+        showCustomAlert("Error", "Could not generate roadmap. Please try again.");
     } finally {
         hideLoadingOverlay();
         el('generate-btn').disabled = false;
@@ -179,61 +182,57 @@ async function handleFormSubmit(e) {
 // --- RENDER ---
 function renderRoadmap(data) {
     currentRoadmap = data;
-    const roadmapContent = el('roadmap-content');
-    roadmapContent.classList.remove('hidden');
+    el('roadmap-content').classList.remove('hidden');
     
-    const progContainer = el('progress-container');
-    // Using orange gradient for the progress bar to match completion theme
-    progContainer.innerHTML = `
-        <div class="flex justify-between mb-2 text-teal-400 font-semibold">
-            <span>Progress</span><span id="progress-text">0%</span>
-        </div>
-        <div class="w-full bg-gray-700 rounded-full h-3 overflow-hidden border border-gray-600">
-            <div id="progress-bar-inner" class="bg-gradient-to-r from-orange-500 to-amber-400 h-full transition-all duration-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]" style="width: 0%"></div>
-        </div>`;
-
+    // 1. Setup Header/Title
     let html = `
-        <div class="space-y-12 animate-fade-in-scale-up">
-            <div class="text-center sm:text-left border-b border-white/10 pb-8">
-                <h1 class="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300 mb-4">${data.name}</h1>
-                <p class="text-xl text-gray-300 max-w-3xl leading-relaxed">${data.summary}</p>
-            </div>`;
+        <div class="mb-12 text-center animate-fade-in-up">
+            <h1 class="text-4xl font-bold mb-3" style="color: var(--text-primary);">${data.name}</h1>
+            <p class="text-lg max-w-2xl mx-auto" style="color: var(--text-secondary);">${data.summary}</p>
+        </div>
+    `;
 
-    data.milestones.forEach(phase => {
+    // 2. Loop Phases
+    data.milestones.forEach((phase, index) => {
         html += `
-            <div class="milestone-phase">
-                <div class="flex items-center gap-4 mb-8">
-                    <div class="h-10 w-1 bg-teal-500 rounded-full"></div>
-                    <h2 class="text-3xl font-bold text-white">${phase.title}</h2>
+            <div class="mb-12 animate-fade-in-up" style="animation-delay: ${index * 100}ms">
+                <div class="flex items-center gap-3 mb-6 border-b border-gray-700 pb-2">
+                    <div class="w-8 h-8 rounded-full bg-teal-500/20 text-teal-500 flex items-center justify-center font-bold text-sm">${index + 1}</div>
+                    <h2 class="text-2xl font-bold" style="color: var(--text-primary);">${phase.title}</h2>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-stretch">
-                    ${phase.skills.map(skill => `
-                        <div class="skill-card group p-6 rounded-2xl cursor-pointer transition-all duration-300 relative overflow-hidden flex flex-col justify-between ${skill.status === 'completed' ? 'completed' : ''}" data-id="${skill.id}">
-                            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-teal-500 to-emerald-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
-                            <p class="font-semibold text-white mb-8 text-lg transition-colors">${skill.title}</p>
-                            <div class="absolute bottom-6 right-6">
-                                <div class="status-dot w-4 h-4 rounded-full border-2 border-gray-700 bg-transparent transition-all duration-300"></div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    ${phase.skills.map(skill => {
+                        const isCompleted = skill.status === 'completed';
+                        // Conditional Classes
+                        const borderClass = isCompleted ? 'border-orange-500' : 'border-gray-700';
+                        const bgClass = isCompleted ? 'bg-orange-500/10' : 'bg-[#1e293b]';
+                        const dotClass = isCompleted ? 'bg-orange-500 shadow-[0_0_10px_#f97316]' : 'bg-gray-600';
+                        const iconClass = isCompleted ? 'fa-check text-orange-500' : 'fa-angle-right text-gray-500';
+                        
+                        return `
+                        <div class="skill-card p-5 rounded-xl cursor-pointer border ${borderClass} ${bgClass} flex flex-col justify-between group" onclick="openSkillModal('${skill.id}')">
+                            <div class="flex justify-between items-start mb-4">
+                                <h3 class="font-semibold text-sm pr-2 group-hover:text-teal-400 transition-colors" style="color: var(--text-primary);">${skill.title}</h3>
+                                <i class="fa-solid ${iconClass} text-sm"></i>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <span class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Click for details</span>
+                                <div class="status-dot w-2 h-2 rounded-full ${dotClass}"></div>
                             </div>
                         </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
-            </div>`;
-    });
-    html += '</div>';
-    
-    el('roadmap-grid-container').innerHTML = html;
-    el('regenerate-section').classList.remove('hidden');
-    el('pdf-controls').classList.remove('hidden');
-    
-    document.querySelectorAll('.skill-card').forEach(card => {
-        card.addEventListener('click', () => openSkillModal(card.dataset.id));
+            </div>
+        `;
     });
 
+    el('roadmap-grid-container').innerHTML = html;
     updateProgress();
 }
 
 function openSkillModal(id) {
-    if(!currentRoadmap) return;
     let skill = null;
     currentRoadmap.milestones.forEach(m => {
         const found = m.skills.find(s => s.id === id);
@@ -244,45 +243,43 @@ function openSkillModal(id) {
     el('modal-title').textContent = skill.title;
     el('modal-description').textContent = skill.description;
     
+    // Stats Grid
     el('modal-details-grid').innerHTML = `
-        <div class="bg-gray-800/50 p-4 rounded-xl border border-white/5">
-            <p class="text-xs uppercase tracking-wider text-gray-500 mb-1">Avg. Salary</p>
-            <p class="font-bold text-white text-lg">${skill.salary_pkr}</p>
+        <div class="p-3 rounded-lg bg-gray-800/50 border border-gray-700">
+            <div class="text-xs text-gray-400 uppercase mb-1">Est. Salary</div>
+            <div class="font-bold text-white">${skill.salary_pkr}</div>
         </div>
-        <div class="bg-gray-800/50 p-4 rounded-xl border border-white/5">
-            <p class="text-xs uppercase tracking-wider text-gray-500 mb-1">Growth Potential</p>
-            <div class="flex text-yellow-400 gap-1">${createStars(skill.future_growth_rating)}</div>
-        </div>
-        <div class="bg-gray-800/50 p-4 rounded-xl border border-white/5 col-span-2">
-            <p class="text-xs uppercase tracking-wider text-gray-500 mb-1">Job Roles</p>
-            <p class="font-medium text-white">${skill.job_opportunities?.join(', ') || 'General'}</p>
+        <div class="p-3 rounded-lg bg-gray-800/50 border border-gray-700">
+            <div class="text-xs text-gray-400 uppercase mb-1">Demand</div>
+            <div class="text-yellow-400 text-sm">${getStarIcons(skill.future_growth_rating)}</div>
         </div>
     `;
 
+    // Resources
     el('modal-resources').innerHTML = skill.resources.map(r => 
-        `<li class="bg-gray-800 rounded-lg p-3 flex items-center justify-between group hover:bg-gray-700 transition-colors">
-            <span class="font-medium text-gray-300">${r.name}</span>
-            <a href="${r.url}" target="_blank" class="text-teal-400 hover:text-teal-300 px-3 py-1 rounded bg-teal-900/30 hover:bg-teal-900/50 text-sm transition-all">Open ↗</a>
+        `<li class="flex items-center justify-between p-2 rounded hover:bg-gray-800 transition-colors">
+            <span class="text-gray-300">${r.name}</span>
+            <a href="${r.url}" target="_blank" class="text-teal-400 hover:text-teal-300"><i class="fa-solid fa-external-link-alt"></i></a>
         </li>`
     ).join('');
 
+    // Button Logic
     const btn = el('modal-complete-btn');
     btn.onclick = () => toggleSkillComplete(skill.id);
     
     if(skill.status === 'completed') {
         btn.textContent = 'Mark as Incomplete';
-        btn.className = 'w-full py-4 rounded-xl font-bold border-2 border-gray-600 text-gray-400 hover:bg-gray-800 transition-all';
+        btn.className = 'w-full py-3 rounded-lg font-bold border-2 border-orange-500 text-orange-500 hover:bg-orange-500/10 transition-all';
     } else {
-        btn.textContent = 'Complete Skill';
-        // Orange button for action
-        btn.className = 'w-full py-4 rounded-xl font-bold bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white shadow-lg transition-all';
+        btn.textContent = 'Mark as Completed';
+        // Consistent hover effect requested by user
+        btn.className = 'w-full py-3 rounded-lg font-bold bg-teal-600 text-white hover:bg-teal-500 transition-all shadow-lg';
     }
 
     el('skill-modal-overlay').classList.remove('hidden');
 }
 
 function toggleSkillComplete(id) {
-    if(!currentRoadmap) return;
     currentRoadmap.milestones.forEach(m => {
         const s = m.skills.find(sk => sk.id === id);
         if(s) s.status = s.status === 'completed' ? 'incomplete' : 'completed';
@@ -301,8 +298,8 @@ function updateProgress() {
     const bar = el('progress-bar-inner');
     if(bar) {
         bar.style.width = `${pct}%`;
-        // Match the progress bar color to the orange completion theme
-        bar.className = 'h-full transition-all duration-500 shadow-[0_0_10px_rgba(245,158,11,0.5)] bg-gradient-to-r from-orange-500 to-amber-400';
+        // Use Teal for progress bar (User requested greenish/theme color)
+        bar.className = 'h-full bg-teal-500 transition-all duration-500 shadow-[0_0_10px_rgba(20,184,166,0.5)]'; 
     }
     if(el('progress-text')) el('progress-text').textContent = `${pct}%`;
 
@@ -326,56 +323,62 @@ function setupEventListeners() {
     el('email-form').addEventListener('submit', handleLogin);
     el('questionnaire-form').addEventListener('submit', handleFormSubmit);
     
-    // Actions
+    // Buttons
     el('regenerate-btn').onclick = () => { 
         el('roadmap-content').classList.add('hidden'); 
         el('questionnaire-container').classList.remove('hidden'); 
     };
     el('custom-alert-confirm-btn').onclick = hideCustomAlert;
     
-    // Header Scroll Logic
-    const roadmapDiv = el('roadmap-content');
-    const qDiv = el('questionnaire-container');
-    
-    const onScroll = (e) => {
-        const target = e.target;
-        const currentY = target.scrollTop;
+    // Scroll Header Logic
+    const appDiv = el('app'); // Main scroll container
+    appDiv.addEventListener('scroll', () => {
+        const currentY = appDiv.scrollTop;
         const header = el('main-header');
         
-        if (!header) return;
-        
-        // Hide on scroll down (> 50px to avoid jitter), Show on scroll up
         if (currentY > lastScrollY && currentY > 50) {
             header.classList.add('hidden-header');
         } else {
             header.classList.remove('hidden-header');
         }
         lastScrollY = currentY;
-    };
-
-    if(roadmapDiv) roadmapDiv.addEventListener('scroll', onScroll);
-    if(qDiv) qDiv.addEventListener('scroll', onScroll);
+    });
     
-    // Theme
+    // Theme Toggle
     el('theme-toggle').onclick = () => {
-        const isLight = document.documentElement.classList.toggle('light-mode');
-        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        const root = document.documentElement;
+        const icon = el('theme-toggle').querySelector('i');
+        
+        if (root.classList.contains('light-mode')) {
+            root.classList.remove('light-mode');
+            localStorage.setItem('theme', 'dark');
+            icon.className = 'fa-solid fa-moon text-xl';
+        } else {
+            root.classList.add('light-mode');
+            localStorage.setItem('theme', 'light');
+            icon.className = 'fa-solid fa-sun text-xl';
+        }
     };
 }
 
-// --- UTILS ---
-function createStars(n) {
-    return '★'.repeat(Math.floor(n)) + (n % 1 ? '½' : '') + '☆'.repeat(5 - Math.ceil(n));
+// --- HELPER ---
+function getStarIcons(rating) {
+    let html = '';
+    for (let i = 0; i < 5; i++) {
+        if (i < Math.floor(rating)) html += '<i class="fa-solid fa-star"></i>';
+        else if (i === Math.floor(rating) && rating % 1 !== 0) html += '<i class="fa-solid fa-star-half-stroke"></i>';
+        else html += '<i class="fa-regular fa-star"></i>';
+    }
+    return html;
 }
 
 function showLoadingWithProgress() {
     el('api-loading-overlay').classList.remove('hidden');
     let w = 0;
     progressInterval = setInterval(() => {
-        if(w < 95) w += Math.random() * 2;
+        if(w < 90) w += Math.random() * 3;
         el('api-loading-progress-bar').style.width = `${w}%`;
-        el('api-loading-progress-text').textContent = `${Math.round(w)}%`;
-    }, 100);
+    }, 200);
     
     el('loading-message-container').textContent = animatedLoadingMessages[0];
     let i = 0;
@@ -389,22 +392,7 @@ function hideLoadingOverlay() {
     clearInterval(progressInterval);
     clearInterval(loadingMessageInterval);
     el('api-loading-progress-bar').style.width = '100%';
-    setTimeout(() => el('api-loading-overlay').classList.add('hidden'), 400);
-}
-
-function checkUsageLimit() {
-    if (sessionStorage.getItem('isAdmin')) return true;
-    const ts = JSON.parse(localStorage.getItem('generationTimestamps') || '[]');
-    const valid = ts.filter(t => t > Date.now() - 3600000);
-    localStorage.setItem('generationTimestamps', JSON.stringify(valid));
-    return valid.length < 50;
-}
-
-function recordGeneration() {
-    if (sessionStorage.getItem('isAdmin')) return;
-    const ts = JSON.parse(localStorage.getItem('generationTimestamps') || '[]');
-    ts.push(Date.now());
-    localStorage.setItem('generationTimestamps', JSON.stringify(ts));
+    setTimeout(() => el('api-loading-overlay').classList.add('hidden'), 300);
 }
 
 function showCustomAlert(title, msg) {
@@ -418,5 +406,5 @@ function hideCustomAlert() {
 }
 
 function applyTranslations(lang) {
-    // Add logic if needed
+    // Implementation if needed
 }

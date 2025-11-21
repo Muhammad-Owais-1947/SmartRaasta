@@ -1,25 +1,39 @@
 /* --- CSS VARIABLES & THEME --- */
 :root {
-    --bg-primary: #0f172a;
-    --bg-secondary: #1e293b;
+    /* Dark Mode (Default) */
+    --bg-primary: #020617;
+    --bg-secondary: #0f172a; /* Card bg */
+    --bg-tertiary: #1e293b; /* Floating bar bg */
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
-    --border-primary: #334155;
-    --header-bg: rgba(15, 23, 42, 0.8);
+    --border-color: #334155;
     
-    --brand-teal: #14b8a6;
-    --brand-teal-hover: #0d9488;
-    --brand-orange: #f59e0b;
-    --brand-orange-glow: rgba(245, 158, 11, 0.3);
+    --accent-teal: #14b8a6;
+    --accent-teal-hover: #0d9488;
+    --accent-orange: #f59e0b;
+    --accent-orange-hover: #d97706;
+    --accent-orange-glow: rgba(245, 158, 11, 0.4);
+    
+    --header-bg: rgba(2, 6, 23, 0.85);
+    --shadow-color: rgba(0, 0, 0, 0.5);
 }
 
 html.light-mode {
-    --bg-primary: #f8fafc;
-    --bg-secondary: #ffffff;
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --border-primary: #e2e8f0;
-    --header-bg: rgba(255, 255, 255, 0.8);
+    /* Light Mode (High Contrast) */
+    --bg-primary: #f1f5f9; /* Light Slate background */
+    --bg-secondary: #ffffff; /* White cards */
+    --bg-tertiary: #ffffff; /* White floating bar */
+    --text-primary: #0f172a; /* Dark Slate text */
+    --text-secondary: #475569; /* Medium Slate text */
+    --border-color: #cbd5e1; /* Light border */
+    
+    --header-bg: rgba(241, 245, 249, 0.9);
+    --shadow-color: rgba(148, 163, 184, 0.2);
+}
+
+/* --- GLOBAL SMOOTH TRANSITION --- */
+body, div, p, h1, h2, h3, button, input, select, header {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 /* --- GENERAL LAYOUT --- */
@@ -27,102 +41,102 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    /* Premium subtle gradient background */
-    background-image: 
-        radial-gradient(circle at 15% 50%, rgba(20, 184, 166, 0.08), transparent 25%), 
-        radial-gradient(circle at 85% 30%, rgba(245, 158, 11, 0.08), transparent 25%);
-    transition: background-color 0.3s ease, color 0.3s ease;
+    /* Subtle gradient overlay for depth */
+    background-image: radial-gradient(circle at 50% 0%, rgba(20, 184, 166, 0.05), transparent 70%);
+    background-attachment: fixed;
 }
 
 /* --- SCROLLBAR --- */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-primary); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
 /* --- HEADER --- */
 #main-header {
     background-color: var(--header-bg);
     backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border-primary);
-    transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+    border-bottom: 1px solid var(--border-color);
 }
-#main-header.hidden-header {
-    transform: translateY(-100%);
+#main-header.hidden-header { transform: translateY(-100%); }
+
+/* --- PROGRESS HEADER (FLOATING BAR) --- */
+.progress-floating-bar {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 25px -5px var(--shadow-color);
 }
 
-/* --- BUTTONS (PREMIUM FEEL) --- */
-.btn-primary {
-    background: linear-gradient(135deg, var(--brand-teal), #0d9488);
-    color: white;
-    box-shadow: 0 4px 6px -1px rgba(20, 184, 166, 0.2);
-    transition: all 0.3s ease;
+/* --- BUTTONS --- */
+.btn-action {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
 }
-.btn-primary:hover {
-    background: linear-gradient(135deg, #0d9488, #115e59);
+
+/* ORANGE HOVER FOR ALL BUTTONS */
+.btn-action:hover, .btn-primary:hover {
+    border-color: var(--accent-orange) !important;
+    color: var(--text-primary);
+    box-shadow: 0 0 12px var(--accent-orange-glow) !important;
     transform: translateY(-1px);
-    box-shadow: 0 10px 15px -3px rgba(20, 184, 166, 0.3);
+}
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-teal), #0d9488);
+    color: white;
+    border: 1px solid transparent;
 }
 
 /* --- CARDS --- */
 .skill-card {
     background-color: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid var(--border-color);
     position: relative;
     overflow: hidden;
 }
 
-/* Hover State */
+/* Hover State: Orange Outline */
 .skill-card:hover {
     transform: translateY(-4px);
-    border-color: var(--brand-teal);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    border-color: var(--accent-orange);
+    box-shadow: 0 10px 20px -10px var(--accent-orange-glow);
 }
 
-/* Completed State (Orange Theme) */
+/* Completed State */
 .skill-card.completed {
-    border-color: var(--brand-orange) !important;
-    background: linear-gradient(to bottom right, rgba(245, 158, 11, 0.05), transparent);
+    border-color: var(--accent-orange) !important;
+    background: linear-gradient(to bottom right, rgba(245, 158, 11, 0.08), transparent);
 }
+/* Completed Card Hover */
 .skill-card.completed:hover {
-    box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.15);
+    box-shadow: 0 0 15px var(--accent-orange-glow);
 }
 
-/* Status Dot Animation */
+/* Status Dot */
 .status-dot {
-    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    background-color: var(--border-color);
+    transition: all 0.3s ease;
 }
 .skill-card.completed .status-dot {
-    background-color: var(--brand-orange);
-    box-shadow: 0 0 8px var(--brand-orange);
-}
-
-/* --- MODALS (Glassmorphism) --- */
-.modal-overlay {
-    background-color: rgba(0, 0, 0, 0.3); /* Light dim */
-    backdrop-filter: blur(8px); /* Heavy blur */
-    transition: opacity 0.3s ease;
-}
-.modal-content {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    background-color: var(--accent-orange);
+    box-shadow: 0 0 8px var(--accent-orange);
 }
 
 /* --- ANIMATIONS --- */
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+@keyframes fadeInScaleUp {
+    from { opacity: 0; transform: scale(0.98) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
 }
-.animate-fade-in-up {
-    animation: fadeInUp 0.5s ease-out forwards;
-}
+.animate-fade-in-scale-up { animation: fadeInScaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
-@keyframes pulse-green {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(20, 184, 166, 0); }
+/* --- FORM INPUTS (Light Mode Fix) --- */
+input, select {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
 }
-.pulse-active {
-    animation: pulse-green 2s infinite;
+input:focus, select:focus {
+    border-color: var(--accent-teal) !important;
+    ring: 2px solid var(--accent-teal) !important;
 }

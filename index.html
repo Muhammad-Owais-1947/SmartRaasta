@@ -5,24 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Raasta - Your Career Roadmap</title>
     <meta name="description" content="Smart Raasta generates a personalized career roadmap for the Pakistani job market.">
+    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='1' x2='1' y2='0'%3E%3Cstop stop-color='%230d9488'/%3E%3Cstop offset='1' stop-color='%2314b8a6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M20 80 L 45 55 L 60 70 L 80 20' stroke='url(%23g)' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='20' cy='80' r='8' fill='%23f9fafb' stroke='url(%23g)' stroke-width='4'/%3E%3Ccircle cx='45' cy='55' r='6' fill='%2314b8a6'/%3E%3Ccircle cx='60' cy='70' r='6' fill='%2314b8a6'/%3E%3Ccircle cx='80' cy='20' r='8' fill='%2314b8a6'/%3E%3C/svg%3E" type="image/svg+xml">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="overflow-hidden h-screen">
+<!-- FIX: Removed bg-gray-900 so CSS gradient works -->
+<body class="overflow-hidden h-screen text-white">
     
-    <!-- Loading Screens -->
-    <div id="loading-screen" class="fixed inset-0 flex flex-col justify-center items-center z-50 bg-gray-900 text-white">
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="fixed inset-0 flex flex-col justify-center items-center z-50 bg-gray-900">
         <div class="spinner w-12 h-12 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div>
         <p class="mt-4 text-lg text-gray-300">Smart Raasta is waking up...</p>
     </div>
 
-    <div id="api-loading-overlay" class="hidden fixed inset-0 bg-opacity-90 flex justify-center items-center z-40 p-4" style="background-color: var(--bg-primary);">
+    <!-- API Processing Overlay -->
+    <div id="api-loading-overlay" class="hidden fixed inset-0 bg-black bg-opacity-90 flex justify-center items-center z-40 p-4">
         <div class="w-full max-w-md text-center">
             <div class="spinner w-12 h-12 rounded-full mx-auto border-4 border-teal-500 border-t-transparent animate-spin"></div>
-            <p id="loading-message-container" class="mt-4 text-lg h-6 text-white"></p>
+            <p id="loading-message-container" class="mt-4 text-lg h-6 text-white font-medium"></p>
             <div class="w-full bg-gray-700 rounded-full h-2.5 mt-4">
                 <div id="api-loading-progress-bar" class="bg-teal-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
             </div>
@@ -70,15 +74,29 @@
         </div>
     </div>
 
-    <!-- Email Login Modal -->
-    <div id="email-modal-overlay" class="hidden fixed inset-0 flex justify-center items-center z-40 p-4 bg-black bg-opacity-90 backdrop-blur-sm">
+    <!-- Login / Save Info Modal -->
+    <div id="info-modal-overlay" class="hidden fixed inset-0 flex justify-center items-center z-[60] p-4 bg-black bg-opacity-90 backdrop-blur-sm">
+        <div class="w-full max-w-md bg-gray-900 rounded-xl shadow-2xl p-8 border border-gray-800 animate-fade-in-scale-up text-center">
+            <div class="mb-4 text-teal-400 text-4xl"><i class="fas fa-save"></i></div>
+            <h2 class="text-2xl font-bold text-white mb-2">Save Your Roadmap</h2>
+            <p class="text-gray-300 mb-6">To save your progress and access it later, please login with your email. It's quick and secure!</p>
+            <div class="flex flex-col gap-3">
+                <button id="info-login-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg transition-colors">Login to Save</button>
+                <button id="info-close-btn" class="w-full bg-transparent border border-gray-600 hover:bg-gray-800 text-gray-400 font-semibold py-3 rounded-lg transition-colors">Continue as Guest</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email Login Input Modal -->
+    <div id="email-modal-overlay" class="hidden fixed inset-0 flex justify-center items-center z-[70] p-4 bg-black bg-opacity-90 backdrop-blur-sm">
         <div class="w-full max-w-md bg-gray-900 rounded-xl shadow-2xl p-8 border border-gray-800 animate-fade-in-scale-up">
-            <h2 class="text-2xl font-bold text-white mb-2">Welcome Back</h2>
-            <p class="text-gray-400 mb-6">Enter your email to continue your journey.</p>
+            <h2 class="text-2xl font-bold text-white mb-2">Login</h2>
+            <p class="text-gray-400 mb-6">We'll save your roadmap to this email.</p>
             <form id="email-form">
                 <input type="email" id="email-input" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 mb-4 focus:ring-2 focus:ring-teal-500 outline-none" placeholder="your@email.com" required>
-                <button type="submit" id="login-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg transition-colors">Continue</button>
+                <button type="submit" id="login-submit-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg transition-colors">Continue</button>
             </form>
+            <button id="email-cancel-btn" class="w-full mt-3 text-gray-500 hover:text-white text-sm">Cancel</button>
         </div>
     </div>
 
@@ -90,14 +108,18 @@
                 <div class="flex justify-between items-center max-w-7xl mx-auto">
                     <a href="#" class="flex items-center gap-2">
                         <svg class="h-8 w-auto" viewBox="0 0 100 100"><use href="#favicon-path" /></svg>
-                        <span class="text-xl font-bold text-white">Smart Raasta</span>
+                        <span class="text-xl font-bold text-white tracking-tight">Smart Raasta</span>
                     </a>
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-3 sm:gap-4">
+                        <!-- NEW Login Button in Header -->
+                        <button id="login-btn-header" class="bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold py-2 px-4 rounded-lg transition-colors shadow-md">Login</button>
+                        <div id="user-email-display" class="hidden text-sm text-gray-300 font-medium"></div>
+                        
                         <button id="theme-toggle" class="relative w-12 h-6 rounded-full bg-gray-700 flex items-center p-1 transition-colors">
                             <div class="absolute w-6 h-6 flex items-center justify-center"><svg class="w-4 h-4 text-yellow-400 sun-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div>
                             <div class="absolute w-6 h-6 flex items-center justify-center"><svg class="w-4 h-4 text-gray-400 moon-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg></div>
                         </button>
-                        <button id="lang-toggle" class="bg-gray-700 text-white font-semibold py-1 px-3 rounded-full text-sm">EN</button>
+                        <button id="lang-toggle" class="bg-gray-700 text-white font-semibold py-1 px-3 rounded-full text-sm border border-gray-600 hover:bg-gray-600 transition-colors">EN</button>
                     </div>
                 </div>
             </header>
@@ -107,8 +129,8 @@
                 <div class="max-w-7xl mx-auto">
                     <div class="flex flex-col sm:flex-row justify-between items-end gap-4 mb-8">
                         <div id="progress-container" class="w-full sm:max-w-md"></div>
-                        <div id="pdf-controls" class="hidden">
-                            <button id="download-pdf-btn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors">
+                        <div id="pdf-controls" class="hidden animate-fade-in-scale-up">
+                            <button id="download-pdf-btn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors shadow-md">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                 Save PDF
                             </button>
@@ -117,8 +139,8 @@
                     
                     <div id="roadmap-grid-container"></div>
                     
-                    <div id="regenerate-section" class="mt-16 text-center hidden">
-                        <button id="regenerate-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg transition-colors inline-flex items-center gap-2">
+                    <div id="regenerate-section" class="mt-16 text-center hidden animate-fade-in-scale-up">
+                        <button id="regenerate-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg transition-colors inline-flex items-center gap-2 shadow-lg">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                             Start Over
                         </button>
@@ -131,7 +153,7 @@
     <!-- Hidden SVG Asset -->
     <svg style="display:none;"><symbol id="favicon-path" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#0d9488"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs><path d="M20 80 L 45 55 L 60 70 L 80 20" stroke="url(#g)" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="80" r="8" fill="#f9fafb" stroke="url(#g)" stroke-width="4"/><circle cx="45" cy="55" r="6" fill="#14b8a6"/><circle cx="60" cy="70" r="6" fill="#14b8a6"/><circle cx="80" cy="20" r="8" fill="#14b8a6"/></symbol></svg>
 
-    <!-- Modals -->
+    <!-- Skill Modal -->
     <div id="skill-modal-overlay" class="hidden fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
         <div id="skill-modal-content" class="bg-gray-900 border border-gray-800 rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
             <div class="p-6 border-b border-gray-800 flex justify-between items-center">
@@ -150,6 +172,7 @@
         </div>
     </div>
 
+    <!-- Completion Modal -->
     <div id="completion-modal-overlay" class="hidden fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
         <div id="completion-modal-content" class="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center max-w-sm">
             <div class="text-teal-500 mb-4 text-5xl">🎉</div>
@@ -159,13 +182,14 @@
         </div>
     </div>
 
+    <!-- Custom Alert Modal -->
     <div id="custom-alert-overlay" class="hidden fixed inset-0 bg-black bg-opacity-90 z-[100] flex justify-center items-center p-4">
         <div id="custom-alert-content" class="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-sm w-full text-center shadow-xl transform transition-all">
             <h3 id="custom-alert-title" class="text-xl font-bold text-white mb-2">Alert</h3>
             <p id="custom-alert-message" class="text-gray-300 mb-6"></p>
             <div class="flex justify-center gap-4">
-                <button id="custom-alert-cancel-btn" class="hidden px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white">Cancel</button>
-                <button id="custom-alert-confirm-btn" class="px-6 py-2 bg-teal-600 hover:bg-teal-500 rounded text-white font-bold">OK</button>
+                <button id="custom-alert-cancel-btn" class="hidden px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white transition-colors">Cancel</button>
+                <button id="custom-alert-confirm-btn" class="px-6 py-2 bg-teal-600 hover:bg-teal-500 rounded text-white font-bold transition-colors">OK</button>
             </div>
         </div>
     </div>

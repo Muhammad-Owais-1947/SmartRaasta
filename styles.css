@@ -1,20 +1,25 @@
 /* --- CSS VARIABLES & THEME --- */
 :root {
-    --bg-primary: #030712;
-    --bg-secondary: #111827;
-    --text-primary: #F9FAFB;
-    --border-primary: #1f2937;
-    --header-bg: rgba(17, 24, 39, 0.85); 
-    --accent-teal: #14b8a6;
-    --accent-orange: #f59e0b; /* Amber-500 */
-    --accent-orange-glow: rgba(245, 158, 11, 0.2);
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --border-primary: #334155;
+    --header-bg: rgba(15, 23, 42, 0.8);
+    
+    --brand-teal: #14b8a6;
+    --brand-teal-hover: #0d9488;
+    --brand-orange: #f59e0b;
+    --brand-orange-glow: rgba(245, 158, 11, 0.3);
 }
+
 html.light-mode {
-    --bg-primary: #f9fafb;
-    --bg-secondary: #f3f4f6;
-    --text-primary: #111827;
-    --border-primary: #e5e7eb;
-    --header-bg: rgba(243, 244, 246, 0.9);
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --border-primary: #e2e8f0;
+    --header-bg: rgba(255, 255, 255, 0.8);
 }
 
 /* --- GENERAL LAYOUT --- */
@@ -22,78 +27,102 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
+    /* Premium subtle gradient background */
     background-image: 
-        radial-gradient(circle at 50% 0%, rgba(20, 184, 166, 0.1), transparent 50%),
-        linear-gradient(to bottom, #0f172a, #020617);
-    background-attachment: fixed;
-    transition: background-color 0.3s, color 0.3s;
+        radial-gradient(circle at 15% 50%, rgba(20, 184, 166, 0.08), transparent 25%), 
+        radial-gradient(circle at 85% 30%, rgba(245, 158, 11, 0.08), transparent 25%);
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* --- SCROLLBAR --- */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+::-webkit-scrollbar-thumb { background: var(--border-primary); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 
-/* --- ANIMATIONS --- */
-@keyframes fadeInScaleUp {
-    from { opacity: 0; transform: scale(0.98) translateY(10px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-}
-.animate-fade-in-scale-up { animation: fadeInScaleUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-
-@keyframes scaleUp {
-    from { transform: scale(0.95); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-}
-.animate-scale-up { animation: scaleUp 0.3s ease-out forwards; }
-
-/* --- HEADER TRANSITIONS --- */
-#main-header { 
-    backdrop-filter: blur(12px);
+/* --- HEADER --- */
+#main-header {
     background-color: var(--header-bg);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s;
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-primary);
+    transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
+#main-header.hidden-header {
+    transform: translateY(-100%);
 }
 
-/* Class to hide header by sliding it up */
-#main-header.hidden-header { 
-    transform: translateY(-100%); 
+/* --- BUTTONS (PREMIUM FEEL) --- */
+.btn-primary {
+    background: linear-gradient(135deg, var(--brand-teal), #0d9488);
+    color: white;
+    box-shadow: 0 4px 6px -1px rgba(20, 184, 166, 0.2);
+    transition: all 0.3s ease;
+}
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0d9488, #115e59);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 15px -3px rgba(20, 184, 166, 0.3);
 }
 
-/* --- CARD STYLES --- */
+/* --- CARDS --- */
 .skill-card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
-    background-color: rgba(31, 41, 55, 0.5); /* Default dark bg */
-    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* Unified Hover Effect */
+/* Hover State */
 .skill-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.4);
-    border-color: var(--accent-teal);
+    transform: translateY(-4px);
+    border-color: var(--brand-teal);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
-/* COMPLETED STATE (Orange Theme) */
+/* Completed State (Orange Theme) */
 .skill-card.completed {
-    border-color: var(--accent-orange) !important;
-    background: linear-gradient(to bottom right, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05)) !important;
-    box-shadow: 0 0 0 1px var(--accent-orange) inset, 0 4px 12px var(--accent-orange-glow);
+    border-color: var(--brand-orange) !important;
+    background: linear-gradient(to bottom right, rgba(245, 158, 11, 0.05), transparent);
+}
+.skill-card.completed:hover {
+    box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.15);
 }
 
+/* Status Dot Animation */
+.status-dot {
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
 .skill-card.completed .status-dot {
-    background-color: var(--accent-orange) !important;
-    box-shadow: 0 0 10px var(--accent-orange);
-    border-color: var(--accent-orange) !important;
+    background-color: var(--brand-orange);
+    box-shadow: 0 0 8px var(--brand-orange);
 }
 
-/* Override text color inside completed cards if needed, or keep white for contrast */
-.skill-card.completed p {
-    color: #fbbf24 !important; /* Light Amber text */
+/* --- MODALS (Glassmorphism) --- */
+.modal-overlay {
+    background-color: rgba(0, 0, 0, 0.3); /* Light dim */
+    backdrop-filter: blur(8px); /* Heavy blur */
+    transition: opacity 0.3s ease;
+}
+.modal-content {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
 
-.custom-scrollbar::-webkit-scrollbar { width: 6px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.2); border-radius: 3px; }
+/* --- ANIMATIONS --- */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+}
+
+@keyframes pulse-green {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(20, 184, 166, 0); }
+}
+.pulse-active {
+    animation: pulse-green 2s infinite;
+}

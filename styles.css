@@ -4,14 +4,17 @@
     --bg-secondary: #111827;
     --text-primary: #F9FAFB;
     --border-primary: #1f2937;
-    --header-bg: rgba(17, 24, 39, 0.7); 
+    --header-bg: rgba(17, 24, 39, 0.85); 
+    --accent-teal: #14b8a6;
+    --accent-orange: #f59e0b; /* Amber-500 */
+    --accent-orange-glow: rgba(245, 158, 11, 0.2);
 }
 html.light-mode {
     --bg-primary: #f9fafb;
     --bg-secondary: #f3f4f6;
     --text-primary: #111827;
     --border-primary: #e5e7eb;
-    --header-bg: rgba(243, 244, 246, 0.7);
+    --header-bg: rgba(243, 244, 246, 0.9);
 }
 
 /* --- GENERAL LAYOUT --- */
@@ -19,11 +22,9 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    /* Enhanced Gradient Background */
     background-image: 
-        radial-gradient(circle at top center, rgba(20, 184, 166, 0.15), transparent 40%),
-        linear-gradient(to bottom, rgba(3, 7, 18, 0.95), rgba(17, 24, 39, 1)),
-        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231f2937' fill-opacity='0.2'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2-H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        radial-gradient(circle at 50% 0%, rgba(20, 184, 166, 0.1), transparent 50%),
+        linear-gradient(to bottom, #0f172a, #020617);
     background-attachment: fixed;
     transition: background-color 0.3s, color 0.3s;
 }
@@ -36,10 +37,10 @@ body {
 
 /* --- ANIMATIONS --- */
 @keyframes fadeInScaleUp {
-    from { opacity: 0; transform: scale(0.98); }
-    to { opacity: 1; transform: scale(1); }
+    from { opacity: 0; transform: scale(0.98) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
 }
-.animate-fade-in-scale-up { animation: fadeInScaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-fade-in-scale-up { animation: fadeInScaleUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
 @keyframes scaleUp {
     from { transform: scale(0.95); opacity: 0; }
@@ -47,19 +48,51 @@ body {
 }
 .animate-scale-up { animation: scaleUp 0.3s ease-out forwards; }
 
-@keyframes bounceIn {
-    0% { transform: scale(0.3); opacity: 0; }
-    50% { transform: scale(1.05); opacity: 1; }
-    70% { transform: scale(0.9); }
-    100% { transform: scale(1); }
-}
-.animate-bounce-in { animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards; }
-
-/* --- HEADER BLUR --- */
+/* --- HEADER TRANSITIONS --- */
 #main-header { 
     backdrop-filter: blur(12px);
     background-color: var(--header-bg);
     border-bottom: 1px solid rgba(255,255,255,0.05);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s;
+}
+
+/* Class to hide header by sliding it up */
+#main-header.hidden-header { 
+    transform: translateY(-100%); 
+}
+
+/* --- CARD STYLES --- */
+.skill-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    background-color: rgba(31, 41, 55, 0.5); /* Default dark bg */
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Unified Hover Effect */
+.skill-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.4);
+    border-color: var(--accent-teal);
+}
+
+/* COMPLETED STATE (Orange Theme) */
+.skill-card.completed {
+    border-color: var(--accent-orange) !important;
+    background: linear-gradient(to bottom right, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05)) !important;
+    box-shadow: 0 0 0 1px var(--accent-orange) inset, 0 4px 12px var(--accent-orange-glow);
+}
+
+.skill-card.completed .status-dot {
+    background-color: var(--accent-orange) !important;
+    box-shadow: 0 0 10px var(--accent-orange);
+    border-color: var(--accent-orange) !important;
+}
+
+/* Override text color inside completed cards if needed, or keep white for contrast */
+.skill-card.completed p {
+    color: #fbbf24 !important; /* Light Amber text */
 }
 
 .custom-scrollbar::-webkit-scrollbar { width: 6px; }

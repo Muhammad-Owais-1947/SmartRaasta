@@ -1,9 +1,7 @@
 // --- SCRIPT CONFIGURATION & CONSTANTS ---
-// FIX: Removed trailing slash to prevent // errors
-const WORKER_URL = 'https://smartrasta.timespace.workers.dev';
+const WORKER_URL = 'https://smartrasta.timespace.workers.dev'; // No trailing slash
 const PDF_WATERMARK_TEXT = 'Smart Raasta Report';
 
-// --- ANIMATED MESSAGES ---
 const animatedLoadingMessages = [
     "Analyzing local job market trends...",
     "Consulting AI career strategists...",
@@ -91,7 +89,7 @@ const translations = {
         lang_confirm_title: "Zubaan Tabdeel Karne Ki Tasdeeq Karein",
         lang_confirm_message: "Zubaan tabdeel karne se AI se naye, tarjuma shuda mawad ke sath aap ka roadmap dobara banaya jayega. Kya aap jari rakhna chahte hain?",
         limit_title: "Istemaal Ki Hadd Mukammal",
-        limit_message: "Aap ne bohot se roadmap banaye hain. Baraye meharbani baad mein koshish karein.",
+        limit_message: "Aap ne pichle ghantay mein 3 roadmaps banaye hain. Baraye meharbani baad mein koshish karein. Safha ab band ho jayega.",
         error_title: "Ghalti"
     }
 };
@@ -105,7 +103,7 @@ function checkUsageLimit() {
     let timestamps = JSON.parse(localStorage.getItem('generationTimestamps')) || [];
     const recentTimestamps = timestamps.filter(ts => ts > oneHourAgo);
     localStorage.setItem('generationTimestamps', JSON.stringify(recentTimestamps));
-    return recentTimestamps.length < 50; // Match worker limit
+    return recentTimestamps.length < 50;
 }
 
 function recordGeneration() {
@@ -148,7 +146,6 @@ async function callGeminiAPI(goal, interests, education, location, lang) {
 }
 
 function renderRoadmap(roadmapData) {
-    // --- VALIDATION CHECK ---
     if (!roadmapData || !roadmapData.milestones || !Array.isArray(roadmapData.milestones)) {
         console.error("Invalid Data Structure from AI:", roadmapData);
         showCustomAlert(
@@ -163,15 +160,13 @@ function renderRoadmap(roadmapData) {
     currentRoadmap = roadmapData;
     isCompletionPopupShown = false;
     
-    progressContainer.innerHTML = `<div class="flex justify-between mb-1"><span class="text-base font-medium text-teal-400" data-translate-key="progress_label">Overall Progress</span><span id="progress-text" class="text-sm font-medium text-teal-400">0%</span></div><div class="w-full bg-gray-700 rounded-full h-2.5"><div id="progress-bar-inner" class="bg-teal-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div></div>`;
-    
+    progressContainer.innerHTML = `<div class="flex justify-between mb-1"><span class="text-base font-medium text-teal-400" data-translate-key="progress_label">Overall Progress</span><span id="progress-text" class="text-sm font-medium text-teal-400">0%</span></div><div class="w-full bg-gray-700 rounded-full h-2.5"><div id="progress-bar-inner" class="bg-teal-500 h-2.5 rounded-full" style="width: 0%"></div></div>`;
     let gridHTML = `<div class="space-y-12 animate-fade-in-scale-up">
         <div class="text-center sm:text-left">
             <h1 class="text-3xl sm:text-4xl font-bold text-white">${roadmapData.name}</h1>
             <p class="mt-2 text-lg text-gray-400">${roadmapData.summary || ''}</p>
         </div>
     `;
-    
     roadmapData.milestones.forEach(m => {
         gridHTML += `<div class="milestone-phase"><h2 class="text-2xl font-bold text-teal-400 border-b border-gray-700 pb-3 mb-6">${m.title}</h2><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-stretch">${m.skills.map(s => `
             <div class="skill-card p-5 rounded-xl cursor-pointer flex flex-col justify-between bg-gray-800 border border-gray-700 hover:border-teal-500 transition-all duration-200 ${s.status === 'completed' ? 'completed border-teal-500 ring-1 ring-teal-500' : ''}" data-skill-id="${s.id}">
@@ -179,7 +174,6 @@ function renderRoadmap(roadmapData) {
                 <div class="self-end status-dot w-3 h-3 rounded-full ${s.status === 'completed' ? 'bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.6)]' : 'bg-gray-600'}"></div>
             </div>`).join('')}</div></div>`;
     });
-    
     gridHTML += '</div>';
     roadmapGridContainer.innerHTML = gridHTML;
     
@@ -191,7 +185,7 @@ function renderRoadmap(roadmapData) {
     setTimeout(() => {
         pdfControls.classList.remove('hidden');
         pdfControls.classList.add('animate-fade-in-scale-up');
-    }, 2000); // Show PDF button after 2s
+    }, 2000);
 }
 
 function findSkillById(skillId) {
@@ -242,7 +236,6 @@ function createStars(rating) {
     return starsHTML;
 }
 
-// --- MODAL FUNCTIONS ---
 function openModal(skill) {
      modalTitle.textContent = skill.title;
      modalDescription.textContent = skill.description || "No description available.";
@@ -279,7 +272,6 @@ function updateModalCompleteButton(status) {
       modalCompleteBtn.className = `w-full font-bold py-3 px-4 rounded-lg transition-colors border ${status === 'completed' ? 'bg-transparent border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-gray-900' : 'bg-teal-600 border-teal-600 text-white hover:bg-teal-700 hover:border-teal-700'}`;
 }
 
-// --- UTILITY & EVENT HANDLERS ---
 function showCustomAlert(title, message, onConfirm, showCancel = false) {
     customAlertTitle.textContent = title;
     customAlertMessage.textContent = message;
@@ -352,15 +344,13 @@ async function checkAuth() {
     const response = await fetch(`${WORKER_URL}/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ checkOnly: true }), // Ping
+      body: JSON.stringify({ checkOnly: true }),
       credentials: 'include'
     });
     if (response.status === 401) throw new Error('Unauthorized');
-    // Authorized
     questionnaireModalOverlay.classList.remove('hidden');
     questionnaireModalOverlay.querySelector('div').classList.add('animate-fade-in-scale-up');
   } catch {
-    // Not authorized
     emailModalOverlay.classList.remove('hidden');
   }
 }

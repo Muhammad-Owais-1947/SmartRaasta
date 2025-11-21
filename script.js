@@ -1,5 +1,5 @@
 // --- SCRIPT CONFIGURATION & CONSTANTS ---
-const WORKER_URL = 'https://smartrasta.timespace.workers.dev'; // No trailing slash
+const WORKER_URL = 'https://smartrasta.timespace.workers.dev';
 const PDF_WATERMARK_TEXT = 'Smart Raasta Report';
 
 const animatedLoadingMessages = [

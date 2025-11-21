@@ -4,209 +4,168 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Raasta - Your Career Roadmap</title>
-    <!-- SEO: Meta description for better search engine visibility. -->
-    <meta name="description" content="Smart Raasta generates a personalized career roadmap for the Pakistani job market. Get a step-by-step guide with milestones, skills, and resources tailored to your goals.">
-    <!-- Favicon -->
+    <meta name="description" content="Smart Raasta generates a personalized career roadmap for the Pakistani job market.">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='1' x2='1' y2='0'%3E%3Cstop stop-color='%230d9488'/%3E%3Cstop offset='1' stop-color='%2314b8a6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M20 80 L 45 55 L 60 70 L 80 20' stroke='url(%23g)' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='20' cy='80' r='8' fill='%23f9fafb' stroke='url(%23g)' stroke-width='4'/%3E%3Ccircle cx='45' cy='55' r='6' fill='%2314b8a6'/%3E%3Ccircle cx='60' cy='70' r='6' fill='%2314b8a6'/%3E%3Ccircle cx='80' cy='20' r='8' fill='%2314b8a6'/%3E%3C/svg%3E" type="image/svg+xml">
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- html2pdf.js for PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="overflow-hidden h-screen">
     
-    <!-- Loading Screens & Overlays -->
-    <div id="loading-screen" class="fixed inset-0 flex flex-col justify-center items-center z-50">
-        <div class="spinner w-12 h-12 rounded-full"></div>
+    <!-- Loading Screens -->
+    <div id="loading-screen" class="fixed inset-0 flex flex-col justify-center items-center z-50 bg-gray-900 text-white">
+        <div class="spinner w-12 h-12 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div>
         <p class="mt-4 text-lg text-gray-300">Smart Raasta is waking up...</p>
     </div>
 
-    <div id="api-loading-overlay" class="hidden fixed inset-0 bg-opacity-80 flex justify-center items-center z-40 p-4" style="background-color: var(--bg-primary);">
+    <div id="api-loading-overlay" class="hidden fixed inset-0 bg-opacity-90 flex justify-center items-center z-40 p-4" style="background-color: var(--bg-primary);">
         <div class="w-full max-w-md text-center">
-            <div class="spinner w-12 h-12 rounded-full mx-auto"></div>
-            <p id="loading-message-container" class="mt-4 text-lg h-6"></p>
+            <div class="spinner w-12 h-12 rounded-full mx-auto border-4 border-teal-500 border-t-transparent animate-spin"></div>
+            <p id="loading-message-container" class="mt-4 text-lg h-6 text-white"></p>
             <div class="w-full bg-gray-700 rounded-full h-2.5 mt-4">
-                <div id="api-loading-progress-bar" class="bg-teal-500 h-2.5 rounded-full" style="width: 0%"></div>
+                <div id="api-loading-progress-bar" class="bg-teal-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
             </div>
             <p id="api-loading-progress-text" class="text-sm text-gray-400 mt-2">0%</p>
         </div>
     </div>
 
-    <!-- User Input Questionnaire Modal -->
-    <div id="questionnaire-modal-overlay" class="hidden fixed inset-0 flex justify-center items-center z-30 p-4">
-        <div class="w-full max-w-4xl bg-gray-900 rounded-xl shadow-2xl overflow-hidden md:grid md:grid-cols-2 border border-gray-800">
-            <div class="hidden md:flex flex-col justify-center p-8 lg:p-12 bg-gray-800" style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Cg fill=%22%232d3748%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%221%22/%3E%3Ccircle cx=%2210%22 cy=%2210%22 r=%221%22/%3E%3Ccircle cx=%2290%22 cy=%2210%22 r=%221%22/%3E%3Ccircle cx=%2210%22 cy=%2290%22 r=%221%22/%3E%3Ccircle cx=%2290%22 cy=%2290%22 r=%221%22/%3E%3C/g%3E%3C/svg%3E'); background-size: cover;">
-                <h2 class="text-3xl md:text-4xl font-bold text-white">Smart Raasta</h2>
-                <p class="mt-4 text-gray-400">Made with pride in Pakistan to help Pakistan’s youth find their Smart Raasta.</p>
+    <!-- Questionnaire Modal -->
+    <div id="questionnaire-modal-overlay" class="hidden fixed inset-0 flex justify-center items-center z-30 p-4 bg-black bg-opacity-80 backdrop-blur-sm">
+        <div class="w-full max-w-4xl bg-gray-900 rounded-xl shadow-2xl overflow-hidden md:grid md:grid-cols-2 border border-gray-800 animate-fade-in-scale-up">
+            <div class="hidden md:flex flex-col justify-center p-8 lg:p-12 bg-gray-800 relative overflow-hidden">
+                <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Cg fill=%22%23fff%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%221%22/%3E%3Ccircle cx=%2210%22 cy=%2210%22 r=%221%22/%3E%3Ccircle cx=%2290%22 cy=%2210%22 r=%221%22/%3E%3C/g%3E%3C/svg%3E');"></div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white relative z-10">Smart Raasta</h2>
+                <p class="mt-4 text-gray-400 relative z-10">Made with pride in Pakistan to help Pakistan’s youth find their Smart Raasta.</p>
             </div>
-            <div class="p-6 sm:p-8">
-                <h2 class="text-2xl sm:text-3xl font-bold text-white mb-2" data-translate-key="questionnaire_title">Design Your Pakistan-Specific Roadmap</h2>
-                <p class="text-gray-400 mb-6" data-translate-key="questionnaire_subtitle">Powered by AI designed for Pakistan’s job market — your personalized career blueprint starts here..</p>
+            <div class="p-6 sm:p-8 relative">
+                <h2 class="text-2xl sm:text-3xl font-bold text-white mb-2" data-translate-key="questionnaire_title">Design Your Roadmap</h2>
+                <p class="text-gray-400 mb-6" data-translate-key="questionnaire_subtitle">Powered by AI designed for Pakistan’s job market.</p>
                 <form id="questionnaire-form">
                     <div class="space-y-4">
                         <div>
-                            <label for="career-goal" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="career_goal_label">Choose Your Professional Domain</label>
-                            <input type="text" id="career-goal" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="e.g., Software Development, Digital Marketing" required>
+                            <label for="career-goal" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="career_goal_label">Career Field</label>
+                            <input type="text" id="career-goal" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="e.g., Software Development" required>
                         </div>
                         <div>
-                            <label for="user-interests" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="interests_label">Specific Interests (Optional)</label>
-                            <input type="text" id="user-interests" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="e.g., AI, Cybersecurity, SEO, UI/UX">
+                            <label for="user-interests" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="interests_label">Interests (Optional)</label>
+                            <input type="text" id="user-interests" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="e.g., AI, Design">
                         </div>
                         <div>
-                            <label for="education-level" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="education_label">Highest Education</label>
+                            <label for="education-level" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="education_label">Education</label>
                             <select id="education-level" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none">
-                                <option>Matric / Intermediate</option><option selected>Bachelor's Degree</option><option>Master's Degree</option><option>PhD</option><option>Vocational Training / Diploma</option>
+                                <option>Matric / Intermediate</option><option selected>Bachelor's Degree</option><option>Master's Degree</option><option>PhD</option><option>Vocational Training</option>
                             </select>
                         </div>
                         <div>
-                            <label for="location" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="province_label">Your Province</label>
+                            <label for="location" class="block text-sm font-medium text-gray-300 mb-2" data-translate-key="province_label">Province</label>
                             <select id="location" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none">
-                                <option>Punjab</option><option>Sindh</option><option>Khyber Pakhtunkhwa</option><option>Balochistan</option><option>Gilgit-Baltistan</option><option>Azad Kashmir</option>
+                                <option>Punjab</option><option>Sindh</option><option>KP</option><option>Balochistan</option><option>Gilgit-Baltistan</option><option>AJK</option>
                             </select>
                         </div>
                     </div>
-                    <button type="submit" id="generate-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg mt-6" data-translate-key="generate_button">Shape My Future</button>
+                    <button type="submit" id="generate-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg mt-6" data-translate-key="generate_button">Generate Roadmap</button>
                 </form>
             </div>
         </div>
     </div>
 
-    <div id="email-modal-overlay" class="hidden fixed inset-0 flex justify-center items-center z-40 p-4">
-        <div class="w-full max-w-md bg-gray-900 rounded-xl shadow-2xl p-6">
-            <h2 class="text-2xl font-bold text-white mb-4">Enter Your Email</h2>
+    <!-- Email Login Modal -->
+    <div id="email-modal-overlay" class="hidden fixed inset-0 flex justify-center items-center z-40 p-4 bg-black bg-opacity-90 backdrop-blur-sm">
+        <div class="w-full max-w-md bg-gray-900 rounded-xl shadow-2xl p-8 border border-gray-800 animate-fade-in-scale-up">
+            <h2 class="text-2xl font-bold text-white mb-2">Welcome Back</h2>
+            <p class="text-gray-400 mb-6">Enter your email to continue your journey.</p>
             <form id="email-form">
-            <input type="email" id="email-input" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 mb-4" placeholder="your@email.com" required>
-            <button type="submit" id="login-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg">Login</button>
+                <input type="email" id="email-input" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-3 mb-4 focus:ring-2 focus:ring-teal-500 outline-none" placeholder="your@email.com" required>
+                <button type="submit" id="login-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg transition-colors">Continue</button>
             </form>
         </div>
     </div>
 
-    <!-- Main Application -->
+    <!-- Main App Area -->
     <div id="app" class="flex flex-col h-screen w-full">
         <main id="main-content" class="flex-1 flex flex-col overflow-hidden hidden">
-            <!-- Main header -->
-            <header id="main-header" class="fixed top-0 left-0 right-0 p-4 sm:px-6 z-10">
+            <!-- Header -->
+            <header id="main-header" class="fixed top-0 left-0 right-0 p-4 sm:px-6 z-20 transition-all duration-300">
                 <div class="flex justify-between items-center max-w-7xl mx-auto">
-                    <a href="#" aria-label="Smart Raasta Home" class="flex items-center gap-2">
-                        <svg class="h-8 w-auto" viewBox="0 0 100 100">
-                           <use href="#favicon-path" />
-                        </svg>
-                        <span class="text-xl font-bold" style="color:var(--text-primary)">Smart Raasta</span>
+                    <a href="#" class="flex items-center gap-2">
+                        <svg class="h-8 w-auto" viewBox="0 0 100 100"><use href="#favicon-path" /></svg>
+                        <span class="text-xl font-bold text-white">Smart Raasta</span>
                     </a>
                     <div class="flex items-center gap-4">
                         <button id="theme-toggle" class="relative w-12 h-6 rounded-full bg-gray-700 flex items-center p-1 transition-colors">
-                            <div class="absolute w-6 h-6 flex items-center justify-center">
-                               <svg class="w-4 h-4 text-yellow-400 sun-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                            </div>
-                            <div class="absolute w-6 h-6 flex items-center justify-center">
-                                <svg class="w-4 h-4 text-gray-400 moon-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
-                            </div>
+                            <div class="absolute w-6 h-6 flex items-center justify-center"><svg class="w-4 h-4 text-yellow-400 sun-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div>
+                            <div class="absolute w-6 h-6 flex items-center justify-center"><svg class="w-4 h-4 text-gray-400 moon-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg></div>
                         </button>
-                        <button id="lang-toggle" class="bg-gray-700 text-white font-semibold py-1 px-3 rounded-full text-sm w-12 text-center">EN</button>
+                        <button id="lang-toggle" class="bg-gray-700 text-white font-semibold py-1 px-3 rounded-full text-sm">EN</button>
                     </div>
                 </div>
             </header>
             
-            <!-- Scrollable content -->
-            <div id="roadmap-content" class="flex-grow overflow-y-auto pt-20">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 pb-8">
-                    <div class="flex flex-col sm:flex-row justify-between sm:items-center flex-wrap gap-4 mb-8">
-                        <div id="progress-container" class="w-full sm:flex-1"></div>
-                        <div id="pdf-controls" class="w-full sm:w-auto flex justify-end hidden">
-                            <button id="download-pdf-btn" class="w-full sm:w-auto bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                Download PDF
+            <!-- Roadmap Content -->
+            <div id="roadmap-content" class="flex-grow overflow-y-auto pt-24 px-4 pb-12">
+                <div class="max-w-7xl mx-auto">
+                    <div class="flex flex-col sm:flex-row justify-between items-end gap-4 mb-8">
+                        <div id="progress-container" class="w-full sm:max-w-md"></div>
+                        <div id="pdf-controls" class="hidden">
+                            <button id="download-pdf-btn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                Save PDF
                             </button>
                         </div>
                     </div>
+                    
                     <div id="roadmap-grid-container"></div>
                     
-                    <!-- Regenerate Button -->
-                    <div id="regenerate-section" class="mt-16 text-center">
-                        <button id="regenerate-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center justify-center gap-2 mx-auto">
-                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.664 0l3.181-3.183m-11.664 0l4.992-4.993m-4.993 0l-3.181 3.183a8.25 8.25 0 000 11.664l3.181 3.183" />
-                            </svg>
-                            Regenerate Roadmap
+                    <div id="regenerate-section" class="mt-16 text-center hidden">
+                        <button id="regenerate-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg transition-colors inline-flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            Start Over
                         </button>
                     </div>
-                    <!-- About Us -->
-                    <section id="about-us" class="mt-20 pt-12 border-t" style="border-color: var(--border-secondary);">
-                        <h2 class="text-2xl font-bold text-center mb-6">Want to Know More About Us?</h2>
-                        <div class="max-w-3xl mx-auto text-center space-y-4" style="color: var(--text-secondary);">
-                            <p>Smart Raasta isn’t just another career platform — it’s a guide built for Pakistanis, by Pakistanis, who understand the real challenges students and professionals face here.Our mission is simple: to turn ambition into opportunity.We help you find your direction through clear, practical, and data-driven career roadmaps — all tailored to the realities of Pakistan’s evolving job market.Whether you’re just starting out or looking to grow in your career, Smart Raasta is here to help you take the next step with confidence.</p>
-                            <a href="https://muhammad-owais-1947.github.io/portfolio/" target="_blank" rel="noopener noreferrer" class="inline-block mt-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
-                                Visit Our Website
-                            </a>
-                        </div>
-                    </section>
                 </div>
-                 <!-- Footer -->
-                <footer id="main-footer" class="w-full p-6 mt-16 text-center" style="background-color: var(--bg-secondary); color: var(--text-secondary);">
-                    <div class="max-w-lg mx-auto">
-                        <h3 class="text-lg font-semibold mb-2" style="color: var(--text-primary);">Help Us Improve</h3>
-                        <p class="mb-4 text-sm">We’d love to hear from you — share your thoughts or ideas below!</p>
-                        <a href="mailto:professional.OTS@Gmail.com" class="inline-block bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-6 rounded-lg transition-colors text-sm">
-                            Share Your Feedback
-                        </a>
-                        <p class="mt-6 text-xs">&copy; 2025 Smart Raasta — Founded by Muhammad Owais — because every journey deserves the right direction.</p>
-                    </div>
-                </footer>
             </div>
         </main>
     </div>
-    <!-- Hidden SVG definition -->
-    <svg style="display:none;">
-      <symbol id="favicon-path" viewBox="0 0 100 100">
-        <defs>
-          <linearGradient id="g" x1="0" y1="1" x2="1" y2="0">
-            <stop stop-color="#0d9488"/>
-            <stop offset="1" stop-color="#14b8a6"/>
-          </linearGradient>
-        </defs>
-        <path d="M20 80 L 45 55 L 60 70 L 80 20" stroke="url(#g)" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="20" cy="80" r="8" fill="#f9fafb" stroke="url(#g)" stroke-width="4"/>
-        <circle cx="45" cy="55" r="6" fill="#14b8a6"/>
-        <circle cx="60" cy="70" r="6" fill="#14b8a6"/>
-        <circle cx="80" cy="20" r="8" fill="#14b8a6"/>
-      </symbol>
-    </svg>
-    
+
+    <!-- Hidden SVG Asset -->
+    <svg style="display:none;"><symbol id="favicon-path" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#0d9488"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs><path d="M20 80 L 45 55 L 60 70 L 80 20" stroke="url(#g)" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="80" r="8" fill="#f9fafb" stroke="url(#g)" stroke-width="4"/><circle cx="45" cy="55" r="6" fill="#14b8a6"/><circle cx="60" cy="70" r="6" fill="#14b8a6"/><circle cx="80" cy="20" r="8" fill="#14b8a6"/></symbol></svg>
+
     <!-- Modals -->
-    <div id="skill-modal-overlay" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex justify-center items-center p-4 z-50 opacity-0 pointer-events-none">
-        <div id="skill-modal-content" class="bg-gray-900 border border-gray-800 rounded-xl shadow-2xl w-full max-w-2xl transform scale-95 opacity-0 flex flex-col" style="max-height: 90vh;">
-            <div class="p-6 sm:p-8 border-b border-gray-800 flex-shrink-0">
-                <div class="flex justify-between items-start"><h2 id="modal-title" class="text-2xl font-bold text-white pr-4"></h2><button id="modal-close-btn" class="text-gray-400 hover:text-white text-3xl leading-none flex-shrink-0">&times;</button></div>
+    <div id="skill-modal-overlay" class="hidden fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+        <div id="skill-modal-content" class="bg-gray-900 border border-gray-800 rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b border-gray-800 flex justify-between items-center">
+                <h2 id="modal-title" class="text-xl font-bold text-white"></h2>
+                <button id="modal-close-btn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
             </div>
-            <div class="p-6 sm:p-8 overflow-y-auto">
+            <div class="p-6 overflow-y-auto">
                 <p id="modal-description" class="text-gray-300 mb-6"></p>
-                <div id="modal-details-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6"></div>
-                <div><h3 class="text-xl font-semibold text-white mb-3" data-translate-key="resources_title">Suggested Resources</h3><ul id="modal-resources" class="space-y-3"></ul></div>
+                <div id="modal-details-grid" class="grid gap-4 mb-6"></div>
+                <h3 class="font-semibold text-white mb-2">Recommended Resources</h3>
+                <ul id="modal-resources" class="space-y-2"></ul>
             </div>
-            <div class="p-6 sm:p-8 border-t border-gray-800 flex-shrink-0"><button id="modal-complete-btn" class="w-full font-bold py-3 px-4 rounded-lg transition-colors"></button></div>
+            <div class="p-6 border-t border-gray-800">
+                <button id="modal-complete-btn" class="w-full py-3 rounded-lg font-bold transition-colors"></button>
+            </div>
         </div>
     </div>
 
-    <div id="completion-modal-overlay" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex justify-center items-center p-4 z-50 opacity-0 pointer-events-none">
-        <div id="completion-modal-content" class="bg-gray-900 border border-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6 sm:p-8 transform scale-95 opacity-0 text-center">
-             <svg class="checkmark mx-auto h-16 w-16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-                <circle class="checkmark__circle" cx="26" cy="26" r="25" stroke-dasharray="166" stroke-dashoffset="166" stroke-width="3" stroke-miterlimit="10" stroke="#14b8a6" fill="none"/>
-                <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" stroke-dasharray="48" stroke-dashoffset="48" stroke-width="3"/>
-            </svg>
-            <h2 class="text-3xl font-bold text-white mt-4" data-translate-key="completion_title">Congratulations!</h2>
-            <p class="text-gray-300 my-4" data-translate-key="completion_subtitle">You’ve reached the end of your roadmap but this is just the beginning. Let’s take the next step together.</p>
-            <button id="completion-close-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg transition-colors" data-translate-key="awesome_button">Awesome!</button>
+    <div id="completion-modal-overlay" class="hidden fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+        <div id="completion-modal-content" class="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center max-w-sm">
+            <div class="text-teal-500 mb-4 text-5xl">🎉</div>
+            <h2 class="text-2xl font-bold text-white mb-2" data-translate-key="completion_title">Congratulations!</h2>
+            <p class="text-gray-400 mb-6" data-translate-key="completion_subtitle">You have completed this roadmap.</p>
+            <button id="completion-close-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg">Awesome!</button>
         </div>
     </div>
 
-    <div id="custom-alert-overlay" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex justify-center items-center p-4 z-[60] opacity-0 transition-opacity duration-300">
-        <div id="custom-alert-content" class="bg-gray-900 border border-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6 sm:p-8 transform scale-95 opacity-0 text-center transition-all duration-300">
-            <h2 id="custom-alert-title" class="text-2xl font-bold text-white mb-4"></h2>
-            <p id="custom-alert-message" class="text-gray-300 my-4"></p>
-            <div class="flex flex-col sm:flex-row justify-end gap-4 mt-6">
-                <button id="custom-alert-cancel-btn" class="w-full sm:w-auto bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">Cancel</button>
-                <button id="custom-alert-confirm-btn" class="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">Confirm</button>
+    <div id="custom-alert-overlay" class="hidden fixed inset-0 bg-black bg-opacity-90 z-[100] flex justify-center items-center p-4">
+        <div id="custom-alert-content" class="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-sm w-full text-center shadow-xl transform transition-all">
+            <h3 id="custom-alert-title" class="text-xl font-bold text-white mb-2">Alert</h3>
+            <p id="custom-alert-message" class="text-gray-300 mb-6"></p>
+            <div class="flex justify-center gap-4">
+                <button id="custom-alert-cancel-btn" class="hidden px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white">Cancel</button>
+                <button id="custom-alert-confirm-btn" class="px-6 py-2 bg-teal-600 hover:bg-teal-500 rounded text-white font-bold">OK</button>
             </div>
         </div>
     </div>

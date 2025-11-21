@@ -1,24 +1,22 @@
 // --- SCRIPT CONFIGURATION & CONSTANTS ---
- 
-// The API key will be automatically provided in the execution environment.
-const apiKey = "AIzaSyB8Ir7lic_JN4MYogAegFIAuCpVbKrf7Os";
-const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
- 
+// Replace with your actual Worker URL from Cloudflare
+const WORKER_URL = 'https://smartrasta.timespace.workers.dev/';  // e.g., https://smartraasta-api.yourworker.workers.dev
+
 // PDF Watermark Configuration: Change this value to set a different watermark. Leave empty for no watermark.
-const PDF_WATERMARK_TEXT = 'Smart Raasta Report'; 
+const PDF_WATERMARK_TEXT = 'Smart Raasta Report';
 // System instructions for the Gemini API call. This is the new, detailed prompt.
 const customApiInstructions = `
 You are an expert data researcher and career strategist specializing in the Pakistani job market. Your task is to perform a deep research-based analysis and generate a detailed, well-structured career roadmap based on user inputs.
 ### OBJECTIVE
 The purpose is to provide a realistic, region-specific, and actionable roadmap for a Pakistani student or professional. The output MUST be a single, valid JSON object.
 ### RESEARCH SCOPE & CONTEXT (For your reference)
-1.  **Overview**: Consider Pakistan’s current job/education ecosystem, major employment sectors (IT, textiles, agriculture, services), and emerging industries (AI, cybersecurity, freelancing, renewable energy).
-2.  **Regional/Provincial Breakdown**: Factor in the user's province (Punjab, Sindh, KP, Balochistan, GB, AJK) to tailor opportunities. Industrial hubs are in Punjab and Sindh, while other regions have unique local economies.
-3.  **Career Pathways**: Identify popular and realistic career paths (e.g., Software Development, Digital Marketing, Cybersecurity, UI/UX, Freelancing, Civil Engineering, Healthcare).
-4.  **Education & Skill Gap**: Be aware of the gap between Pakistani academia and industry demands. Emphasize practical skills, certifications, and online learning.
-5.  **Localization Insights**: Consider urban vs. rural job availability, language preferences (Urdu/English), and digital literacy challenges.
-6.  **The information should be updated.
-7.  **Try to find free courses.
+1. **Overview**: Consider Pakistan’s current job/education ecosystem, major employment sectors (IT, textiles, agriculture, services), and emerging industries (AI, cybersecurity, freelancing, renewable energy).
+2. **Regional/Provincial Breakdown**: Factor in the user's province (Punjab, Sindh, KP, Balochistan, GB, AJK) to tailor opportunities. Industrial hubs are in Punjab and Sindh, while other regions have unique local economies.
+3. **Career Pathways**: Identify popular and realistic career paths (e.g., Software Development, Digital Marketing, Cybersecurity, UI/UX, Freelancing, Civil Engineering, Healthcare).
+4. **Education & Skill Gap**: Be aware of the gap between Pakistani academia and industry demands. Emphasize practical skills, certifications, and online learning.
+5. **Localization Insights**: Consider urban vs. rural job availability, language preferences (Urdu/English), and digital literacy challenges.
+6. **The information should be updated.
+7. **Try to find free courses.
 ### USER INPUTS (You will be provided with these)
 * **Desired Career Field**: e.g., "Software Development"
 * **Specific Interests**: e.g., "AI, Web Development" (optional)
@@ -64,7 +62,6 @@ You MUST return your findings as a single, valid JSON object. Do NOT include any
   ]
 }
 `;
- 
 // Animated messages for the loading screen.
 const animatedLoadingMessages = [
     "Analyzing local job market trends...",
@@ -83,7 +80,7 @@ let currentRoadmap = null;
 let isCompletionPopupShown = false;
 let lastScrollY = 0;
 let confirmCallback = null;
-let progressInterval = null; 
+let progressInterval = null;
 let loadingMessageInterval = null;
 // --- DOM ELEMENT SELECTORS ---
 const el = id => document.getElementById(id);
@@ -105,6 +102,11 @@ const loadingScreen = el('loading-screen'), apiLoadingOverlay = el('api-loading-
       customAlertOverlay = el('custom-alert-overlay'), customAlertContent = el('custom-alert-content'),
       customAlertTitle = el('custom-alert-title'), customAlertMessage = el('custom-alert-message'),
       customAlertConfirmBtn = el('custom-alert-confirm-btn'), customAlertCancelBtn = el('custom-alert-cancel-btn');
+// New for login
+const emailModalOverlay = el('email-modal-overlay');
+const emailForm = el('email-form');
+const emailInput = el('email-input');
+const loginBtn = el('login-btn');
 // --- LANGUAGE TRANSLATIONS ---
 const translations = {
     en: {
@@ -161,10 +163,10 @@ function checkUsageLimit() {
     const now = new Date().getTime();
     const oneHourAgo = now - (60 * 60 * 1000);
     let timestamps = JSON.parse(localStorage.getItem('generationTimestamps')) || [];
- 
+    
     const recentTimestamps = timestamps.filter(ts => ts > oneHourAgo);
     localStorage.setItem('generationTimestamps', JSON.stringify(recentTimestamps));
- 
+    
     return recentTimestamps.length < 3;
 }
 /**
@@ -180,49 +182,31 @@ function recordGeneration() {
     localStorage.setItem('generationTimestamps', JSON.stringify(timestamps));
 }
 /**
- * Calls the Gemini API to generate the career roadmap.
+ * Calls the Worker to generate the career roadmap.
  * @returns {Promise<object|null>} The roadmap data object or null if an error occurs.
  */
 async function callGeminiAPI(goal, interests, education, location, lang) {
-    const langInstruction = lang === 'ur' ? 'All text in the response MUST be in Roman Urdu.' : 'All text in the response MUST be in English.';
-    const interestsText = interests ? `The user has specific interests in: '${interests}'.` : '';
-    const systemInstruction = { parts: [{ text: `${customApiInstructions} ${langInstruction}` }] };
-    const userPromptText = `
-        Generate a career roadmap based on these details:
-        - Career Field: '${goal}'
-        - Specific Interests: '${interests || 'None specified'}'
-        - Education Level: '${education}'
-        - Province: '${location}', Pakistan
-        ${interestsText}
-    `;
- 
-    const payload = {
-        contents: [{ parts: [{ text: userPromptText }] }],
-        systemInstruction,
-        generationConfig: { responseMimeType: "application/json" }
-    };
+    const payload = { goal, interests, education, location, lang };
     try {
-        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        if (!response.ok) throw new Error(`API Error: ${response.statusText} (${response.status})`);
-        const result = await response.json();
-        if (result.candidates?.[0]?.content?.parts?.[0]) {
-             return JSON.parse(result.candidates[0].content.parts[0].text);
-        } else {
-            console.error("API Response was empty or invalid:", result);
-            throw new Error("Invalid response structure from API.");
-        }
+        const response = await fetch(`${WORKER_URL}/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            credentials: 'include'  // Sends cookie for auth
+        });
+        if (!response.ok) throw new Error(`Worker Error: ${await response.text()}`);
+        return await response.json();
     } catch (error) {
-        console.error("Error calling Gemini API:", error);
+        console.error("Error calling Worker:", error);
         const currentLang = localStorage.getItem('lang') || 'en';
         showCustomAlert(
             translations[currentLang].error_title,
-            `Failed to generate roadmap. The AI may be busy or an error occurred. Details: ${error.message}`,
+            `Failed to generate roadmap. Details: ${error.message}`,
             () => {}
         );
         return null;
     }
 }
- 
 /**
  * Renders the entire roadmap grid based on the provided data.
  * @param {object} roadmapData - The JSON object returned from the API.
@@ -230,7 +214,7 @@ async function callGeminiAPI(goal, interests, education, location, lang) {
 function renderRoadmap(roadmapData) {
     currentRoadmap = roadmapData;
     isCompletionPopupShown = false;
- 
+    
     progressContainer.innerHTML = `<div class="flex justify-between mb-1"><span class="text-base font-medium text-teal-400" data-translate-key="progress_label">Overall Progress</span><span id="progress-text" class="text-sm font-medium text-teal-400">0%</span></div><div class="w-full bg-gray-700 rounded-full h-2.5"><div id="progress-bar-inner" class="bg-teal-500 h-2.5 rounded-full" style="width: 0%"></div></div>`;
     let gridHTML = `<div class="space-y-12">
         <div class="text-center sm:text-left">
@@ -243,7 +227,7 @@ function renderRoadmap(roadmapData) {
     });
     gridHTML += '</div>';
     roadmapGridContainer.innerHTML = gridHTML;
- 
+    
     updateProgress();
     applyTranslations(localStorage.getItem('lang') || 'en');
     pdfControls.classList.add('hidden'); // Hide initially
@@ -252,7 +236,6 @@ function renderRoadmap(roadmapData) {
         pdfControls.classList.add('animate-fade-in-scale-up');
     }, 60000); // Show after 1 minute
 }
- 
 /**
  * Finds a specific skill object by its ID within the current roadmap data.
  * @param {string} skillId - The unique ID of the skill to find.
@@ -274,7 +257,7 @@ function updateProgress() {
     const allSkills = currentRoadmap.milestones.flatMap(m => m.skills);
     const completedSkills = allSkills.filter(s => s.status === 'completed');
     const progressPercentage = allSkills.length > 0 ? (completedSkills.length / allSkills.length) * 100 : 0;
- 
+    
     const progressBar = el('progress-bar-inner');
     const progressText = el('progress-text');
     if(progressBar) progressBar.style.width = `${progressPercentage}%`;
@@ -284,7 +267,6 @@ function updateProgress() {
         isCompletionPopupShown = true;
     }
 }
- 
 /**
  * Replaces the progress bar with a "Roadmap Completed!" message.
  */
@@ -294,7 +276,6 @@ function renderCompletionState() {
         applyTranslations(localStorage.getItem('lang') || 'en');
     }
 }
- 
 /**
  * Generates HTML for star ratings.
  * @param {number} rating - The rating value (e.g., 4.5).
@@ -335,7 +316,6 @@ function closeModal() {
      skillModalOverlay.classList.remove('open');
      setTimeout(() => skillModalOverlay.classList.add('hidden'), 300);
 }
- 
 function openCompletionModal() {
      completionModalOverlay.classList.remove('hidden');
      setTimeout(() => completionModalOverlay.classList.add('open'), 10);
@@ -352,7 +332,6 @@ function updateModalCompleteButton(status) {
       modalCompleteBtn.textContent = status === 'completed' ? 'Mark as Incomplete' : 'Mark as Completed';
       modalCompleteBtn.className = `w-full font-bold py-3 px-4 rounded-lg transition-colors ${status === 'completed' ? 'bg-yellow-600 hover:bg-yellow-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`;
 }
- 
 function showCustomAlert(title, message, onConfirm, showCancel = false) {
     customAlertTitle.textContent = title;
     customAlertMessage.textContent = message;
@@ -376,7 +355,6 @@ function showLoadingWithProgress() {
     clearInterval(progressInterval);
     clearInterval(loadingMessageInterval);
     apiLoadingOverlay.classList.remove('hidden');
- 
     // Progress bar simulation
     let progress = 0;
     apiLoadingProgressBar.style.width = '0%';
@@ -402,7 +380,6 @@ function showLoadingWithProgress() {
         }, 300); // Wait for fade out
     }, 2000); // Change message every 2 seconds
 }
- 
 function hideLoadingOverlay() {
     clearInterval(progressInterval);
     clearInterval(loadingMessageInterval);
@@ -412,7 +389,45 @@ function hideLoadingOverlay() {
         apiLoadingOverlay.classList.add('hidden');
     }, 500);
 }
- 
+// New: Handle login submit
+async function handleLogin(e) {
+  if (e) e.preventDefault();
+  const email = emailInput.value.trim();
+  if (!email) return showCustomAlert('Error', 'Please enter your email', () => {});
+  try {
+    const response = await fetch(`${WORKER_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+      credentials: 'include'  // Allows cookie to be set
+    });
+    if (!response.ok) throw new Error(await response.text());
+    emailModalOverlay.classList.add('hidden');
+    // Show questionnaire
+    questionnaireModalOverlay.classList.remove('hidden');
+    questionnaireModalOverlay.querySelector('div').classList.add('animate-fade-in-scale-up');
+  } catch (error) {
+    showCustomAlert('Login Error', error.message, () => {});
+  }
+}
+
+// New: Check auth on load
+async function checkAuth() {
+  try {
+    const response = await fetch(`${WORKER_URL}/generate`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+    if (response.status === 401) throw new Error('Unauthorized');
+    // If authorized, show questionnaire
+    questionnaireModalOverlay.classList.remove('hidden');
+    questionnaireModalOverlay.querySelector('div').classList.add('animate-fade-in-scale-up');
+  } catch {
+    // Show email modal
+    emailModalOverlay.classList.remove('hidden');
+  }
+}
+
 // --- EVENT HANDLERS ---
 /**
  * Handles the main form submission for generating a roadmap.
@@ -420,7 +435,6 @@ function hideLoadingOverlay() {
  */
 async function handleFormSubmit(e) {
     if (e) e.preventDefault();
- 
     const lang = localStorage.getItem('lang') || 'en';
     if (!checkUsageLimit()) {
         showCustomAlert(
@@ -430,15 +444,14 @@ async function handleFormSubmit(e) {
         );
         return;
     }
- 
     showLoadingWithProgress();
     generateBtn.disabled = true;
     regenerateBtn.disabled = true;
     const personalizedRoadmap = await callGeminiAPI(
-        el('career-goal').value, 
+        el('career-goal').value,
         el('user-interests').value,
-        el('education-level').value, 
-        el('location').value, 
+        el('education-level').value,
+        el('location').value,
         lang
     );
     hideLoadingOverlay();
@@ -449,7 +462,7 @@ async function handleFormSubmit(e) {
         recordGeneration();
         renderRoadmap(personalizedRoadmap);
         questionnaireModalOverlay.classList.add('opacity-0', 'pointer-events-none');
-        
+       
         // Animate main content appearing
         mainContent.classList.remove('hidden');
         mainContent.classList.remove('animate-fade-in-scale-up');
@@ -457,7 +470,6 @@ async function handleFormSubmit(e) {
         mainContent.classList.add('animate-fade-in-scale-up');
     }
 }
- 
 function handleGridClick(e) {
     const card = e.target.closest('.skill-card');
     if (card) {
@@ -465,18 +477,15 @@ function handleGridClick(e) {
         if(skill) openModal(skill);
     }
 }
- 
 function handleCompleteClick(skillId) {
     const skill = findSkillById(skillId);
     if (!skill) return;
     skill.status = skill.status === 'completed' ? 'incomplete' : 'completed';
- 
     // This logic correctly reverts progress when a task is unchecked.
     const skillCard = document.querySelector(`.skill-card[data-skill-id="${skillId}"]`);
     if (skillCard) {
         skillCard.classList.toggle('completed', skill.status === 'completed');
     }
- 
     updateProgress(); // Recalculates progress from scratch.
     closeModal();
 }
@@ -488,7 +497,6 @@ function handleDownloadPdf() {
     const goal = el('career-goal').value || 'career';
     const filename = `${goal.toLowerCase().replace(/\s+/g, '-')}-roadmap.pdf`;
     const watermarkText = PDF_WATERMARK_TEXT;
- 
     let pdfContentHtml = `
         <style>
             body { font-family: sans-serif; color: #333; }
@@ -529,15 +537,13 @@ function handleDownloadPdf() {
         });
     });
     pdfContentHtml += '</body>';
- 
     const opt = {
-        margin:       [0.5, 0.5, 0.5, 0.5],
-        filename:     filename,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 },
-        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        margin: [0.5, 0.5, 0.5, 0.5],
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
- 
     html2pdf().set(opt).from(pdfContentHtml).toPdf().get('pdf').then(function (pdf) {
         if (watermarkText) {
             const totalPages = pdf.internal.getNumberOfPages();
@@ -558,14 +564,12 @@ function toggleTheme() {
     const isLight = document.documentElement.classList.contains('light-mode');
     localStorage.setItem('theme', isLight ? 'light' : 'dark');
 }
- 
 function toggleLanguage() {
     const currentLang = localStorage.getItem('lang') || 'en';
     const newLang = currentLang === 'en' ? 'ur' : 'en';
- 
     if (currentRoadmap) {
         showCustomAlert(
-            translations[currentLang].lang_confirm_title, 
+            translations[currentLang].lang_confirm_title,
             translations[currentLang].lang_confirm_message,
             () => {
                 localStorage.setItem('lang', newLang);
@@ -587,9 +591,7 @@ function applyTranslations(lang) {
     });
     el('lang-toggle').textContent = lang.toUpperCase();
 }
- 
 // --- INITIALIZATION & EVENT LISTENERS ---
- 
 document.addEventListener('DOMContentLoaded', () => {
     // Set initial theme and language
     if (localStorage.getItem('theme') === 'light') {
@@ -600,10 +602,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Show the initial questionnaire form after a brief delay
     setTimeout(() => {
         loadingScreen.classList.add('opacity-0', 'pointer-events-none');
-        questionnaireModalOverlay.classList.remove('hidden');
-        questionnaireModalOverlay.querySelector('div').classList.add('animate-fade-in-scale-up');
     }, 1000);
- 
+    // Check auth and show appropriate modal
+    checkAuth();
     // --- Admin override listener ---
     const careerGoalInput = el('career-goal');
     careerGoalInput.addEventListener('input', () => {
@@ -618,7 +619,6 @@ document.addEventListener('DOMContentLoaded', () => {
     questionnaireForm.addEventListener('submit', handleFormSubmit);
     regenerateBtn.addEventListener('click', handleFormSubmit);
     downloadPdfBtn.addEventListener('click', handleDownloadPdf);
- 
     mainHeader.addEventListener('click', e => {
         if(e.target.closest('#theme-toggle')) toggleTheme();
         if(e.target.closest('#lang-toggle')) toggleLanguage();
@@ -642,4 +642,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     customAlertCancelBtn.addEventListener('click', hideCustomAlert);
     customAlertOverlay.addEventListener('click', e => { if (e.target === customAlertOverlay) hideCustomAlert(); });
+    // New login listener
+    emailForm.addEventListener('submit', handleLogin);
 });

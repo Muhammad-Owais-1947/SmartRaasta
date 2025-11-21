@@ -1,7 +1,9 @@
 // --- SCRIPT CONFIGURATION & CONSTANTS ---
+// FIX: Removed trailing slash to prevent // errors
 const WORKER_URL = 'https://smartrasta.timespace.workers.dev';
 const PDF_WATERMARK_TEXT = 'Smart Raasta Report';
 
+// --- ANIMATED MESSAGES ---
 const animatedLoadingMessages = [
     "Analyzing local job market trends...",
     "Consulting AI career strategists...",
@@ -42,7 +44,8 @@ const loadingScreen = el('loading-screen'), apiLoadingOverlay = el('api-loading-
       completionCloseBtn = el('completion-close-btn'),
       customAlertOverlay = el('custom-alert-overlay'), customAlertContent = el('custom-alert-content'),
       customAlertTitle = el('custom-alert-title'), customAlertMessage = el('custom-alert-message'),
-      customAlertConfirmBtn = el('custom-alert-confirm-btn'), customAlertCancelBtn = el('custom-alert-cancel-btn');
+      customAlertConfirmBtn = el('custom-alert-confirm-btn'), customAlertCancelBtn = el('custom-alert-cancel-btn'),
+      regenerateSection = el('regenerate-section');
 
 const emailModalOverlay = el('email-modal-overlay');
 const emailForm = el('email-form');
@@ -68,7 +71,7 @@ const translations = {
         lang_confirm_title: "Confirm Language Change",
         lang_confirm_message: "Changing the language will re-generate your roadmap with new, translated content from the AI. Do you want to continue?",
         limit_title: "Usage Limit Reached",
-        limit_message: "You have generated 3 roadmaps in the last hour. Please try again later. The page will now close.",
+        limit_message: "You have generated too many roadmaps recently. Please try again later.",
         error_title: "Error"
     },
     ur: {
@@ -88,7 +91,7 @@ const translations = {
         lang_confirm_title: "Zubaan Tabdeel Karne Ki Tasdeeq Karein",
         lang_confirm_message: "Zubaan tabdeel karne se AI se naye, tarjuma shuda mawad ke sath aap ka roadmap dobara banaya jayega. Kya aap jari rakhna chahte hain?",
         limit_title: "Istemaal Ki Hadd Mukammal",
-        limit_message: "Aap ne pichle ghantay mein 3 roadmaps banaye hain. Baraye meharbani baad mein koshish karein. Safha ab band ho jayega.",
+        limit_message: "Aap ne bohot se roadmap banaye hain. Baraye meharbani baad mein koshish karein.",
         error_title: "Ghalti"
     }
 };
@@ -102,7 +105,7 @@ function checkUsageLimit() {
     let timestamps = JSON.parse(localStorage.getItem('generationTimestamps')) || [];
     const recentTimestamps = timestamps.filter(ts => ts > oneHourAgo);
     localStorage.setItem('generationTimestamps', JSON.stringify(recentTimestamps));
-    return recentTimestamps.length < 3;
+    return recentTimestamps.length < 50; // Match worker limit
 }
 
 function recordGeneration() {
@@ -128,7 +131,7 @@ async function callGeminiAPI(goal, interests, education, location, lang) {
                 const errJson = JSON.parse(errorText);
                 throw new Error(errJson.error || errorText);
             } catch(e) {
-                throw new Error(`Worker Error: ${response.status} ${errorText}`);
+                throw new Error(`Server Error: ${response.status} ${errorText}`);
             }
         }
         return await response.json();
@@ -145,6 +148,7 @@ async function callGeminiAPI(goal, interests, education, location, lang) {
 }
 
 function renderRoadmap(roadmapData) {
+    // --- VALIDATION CHECK ---
     if (!roadmapData || !roadmapData.milestones || !Array.isArray(roadmapData.milestones)) {
         console.error("Invalid Data Structure from AI:", roadmapData);
         showCustomAlert(
@@ -159,26 +163,35 @@ function renderRoadmap(roadmapData) {
     currentRoadmap = roadmapData;
     isCompletionPopupShown = false;
     
-    progressContainer.innerHTML = `<div class="flex justify-between mb-1"><span class="text-base font-medium text-teal-400" data-translate-key="progress_label">Overall Progress</span><span id="progress-text" class="text-sm font-medium text-teal-400">0%</span></div><div class="w-full bg-gray-700 rounded-full h-2.5"><div id="progress-bar-inner" class="bg-teal-500 h-2.5 rounded-full" style="width: 0%"></div></div>`;
-    let gridHTML = `<div class="space-y-12">
+    progressContainer.innerHTML = `<div class="flex justify-between mb-1"><span class="text-base font-medium text-teal-400" data-translate-key="progress_label">Overall Progress</span><span id="progress-text" class="text-sm font-medium text-teal-400">0%</span></div><div class="w-full bg-gray-700 rounded-full h-2.5"><div id="progress-bar-inner" class="bg-teal-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div></div>`;
+    
+    let gridHTML = `<div class="space-y-12 animate-fade-in-scale-up">
         <div class="text-center sm:text-left">
-            <h1 class="text-3xl sm:text-4xl font-bold">${roadmapData.name}</h1>
+            <h1 class="text-3xl sm:text-4xl font-bold text-white">${roadmapData.name}</h1>
             <p class="mt-2 text-lg text-gray-400">${roadmapData.summary || ''}</p>
         </div>
     `;
+    
     roadmapData.milestones.forEach(m => {
-        gridHTML += `<div class="milestone-phase"><h2 class="text-2xl font-bold border-b-2 pb-3 mb-6" style="border-color: var(--border-secondary);">${m.title}</h2><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-stretch">${m.skills.map(s => `<div class="skill-card p-4 rounded-lg cursor-pointer flex flex-col justify-between ${s.status === 'completed' ? 'completed' : ''}" data-skill-id="${s.id}"><p class="font-semibold text-sm">${s.title}</p><div class="self-end status-dot bg-gray-600"></div></div>`).join('')}</div></div>`;
+        gridHTML += `<div class="milestone-phase"><h2 class="text-2xl font-bold text-teal-400 border-b border-gray-700 pb-3 mb-6">${m.title}</h2><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-stretch">${m.skills.map(s => `
+            <div class="skill-card p-5 rounded-xl cursor-pointer flex flex-col justify-between bg-gray-800 border border-gray-700 hover:border-teal-500 transition-all duration-200 ${s.status === 'completed' ? 'completed border-teal-500 ring-1 ring-teal-500' : ''}" data-skill-id="${s.id}">
+                <p class="font-semibold text-white mb-4">${s.title}</p>
+                <div class="self-end status-dot w-3 h-3 rounded-full ${s.status === 'completed' ? 'bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.6)]' : 'bg-gray-600'}"></div>
+            </div>`).join('')}</div></div>`;
     });
+    
     gridHTML += '</div>';
     roadmapGridContainer.innerHTML = gridHTML;
     
     updateProgress();
     applyTranslations(localStorage.getItem('lang') || 'en');
+    
+    regenerateSection.classList.remove('hidden');
     pdfControls.classList.add('hidden');
     setTimeout(() => {
         pdfControls.classList.remove('hidden');
         pdfControls.classList.add('animate-fade-in-scale-up');
-    }, 60000);
+    }, 2000); // Show PDF button after 2s
 }
 
 function findSkillById(skillId) {
@@ -208,7 +221,7 @@ function updateProgress() {
 
 function renderCompletionState() {
     if(progressContainer) {
-        progressContainer.innerHTML = `<div class="flex items-center justify-end h-full text-emerald-400 animate-pulse"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span class="text-base font-medium ml-2" data-translate-key="completed_message">Roadmap Completed!</span></div>`;
+        progressContainer.innerHTML = `<div class="flex items-center justify-end h-full text-emerald-400 animate-pulse"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span class="text-base font-medium ml-2" data-translate-key="completed_message">Roadmap Completed!</span></div>`;
         applyTranslations(localStorage.getItem('lang') || 'en');
     }
 }
@@ -223,17 +236,18 @@ function createStars(rating) {
         } else if (i === fullStars && halfStar) {
             starsHTML += `<svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292zM10 12.433V6.214l.951 2.924a1 1 0 00.95.69h3.087l-2.4 1.74a1 1 0 00-.364 1.118l.95 2.923-2.4-1.74a1 1 0 00-1.175 0l-2.4 1.74.95-2.923a1 1 0 00-.364-1.118l-2.4-1.74h3.087a1 1 0 00.95-.69L10 6.214z"></path></svg>`;
         } else {
-             starsHTML += `<svg class="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>`;
+             starsHTML += `<svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>`;
         }
     }
     return starsHTML;
 }
 
+// --- MODAL FUNCTIONS ---
 function openModal(skill) {
      modalTitle.textContent = skill.title;
      modalDescription.textContent = skill.description || "No description available.";
-     modalDetailsGrid.innerHTML = `<div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400 mb-1">Avg. Salary (PKR)</p><p class="text-lg font-semibold text-white">${skill.salary_pkr || 'N/A'}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400 mb-1">Future Growth</p><div class="flex items-center">${createStars(skill.future_growth_rating || 0)}</div></div><div class="bg-gray-800 p-4 rounded-lg sm:col-span-2"><p class="text-sm text-gray-400 mb-1">Opportunities</p><p class="text-lg font-semibold text-white">${skill.job_opportunities?.join(', ') || 'N/A'}</p></div>`;
-     modalResources.innerHTML = skill.resources?.length ? skill.resources.map(r => `<li><a href="${r.url}" target="_blank" rel="noopener noreferrer" class="text-teal-400 hover:text-teal-300 underline">${r.name}</a></li>`).join('') : '<li>No suggestions provided.</li>';
+     modalDetailsGrid.innerHTML = `<div class="bg-gray-800 p-4 rounded-lg border border-gray-700"><p class="text-sm text-gray-400 mb-1">Avg. Salary (PKR)</p><p class="text-lg font-semibold text-white">${skill.salary_pkr || 'N/A'}</p></div><div class="bg-gray-800 p-4 rounded-lg border border-gray-700"><p class="text-sm text-gray-400 mb-1">Future Growth</p><div class="flex items-center">${createStars(skill.future_growth_rating || 0)}</div></div><div class="bg-gray-800 p-4 rounded-lg sm:col-span-2 border border-gray-700"><p class="text-sm text-gray-400 mb-1">Opportunities</p><p class="text-lg font-semibold text-white">${skill.job_opportunities?.join(', ') || 'N/A'}</p></div>`;
+     modalResources.innerHTML = skill.resources?.length ? skill.resources.map(r => `<li><a href="${r.url}" target="_blank" rel="noopener noreferrer" class="text-teal-400 hover:text-teal-300 underline hover:no-underline transition-colors">${r.name}</a></li>`).join('') : '<li class="text-gray-500">No suggestions provided.</li>';
      modalCompleteBtn.onclick = () => handleCompleteClick(skill.id);
      updateModalCompleteButton(skill.status);
      skillModalOverlay.classList.remove('hidden');
@@ -262,9 +276,10 @@ function closeCompletionModal() {
 
 function updateModalCompleteButton(status) {
       modalCompleteBtn.textContent = status === 'completed' ? 'Mark as Incomplete' : 'Mark as Completed';
-      modalCompleteBtn.className = `w-full font-bold py-3 px-4 rounded-lg transition-colors ${status === 'completed' ? 'bg-yellow-600 hover:bg-yellow-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`;
+      modalCompleteBtn.className = `w-full font-bold py-3 px-4 rounded-lg transition-colors border ${status === 'completed' ? 'bg-transparent border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-gray-900' : 'bg-teal-600 border-teal-600 text-white hover:bg-teal-700 hover:border-teal-700'}`;
 }
 
+// --- UTILITY & EVENT HANDLERS ---
 function showCustomAlert(title, message, onConfirm, showCancel = false) {
     customAlertTitle.textContent = title;
     customAlertMessage.textContent = message;
@@ -272,18 +287,10 @@ function showCustomAlert(title, message, onConfirm, showCancel = false) {
     customAlertCancelBtn.classList.toggle('hidden', !showCancel);
     customAlertConfirmBtn.textContent = showCancel ? "Confirm" : "OK";
     customAlertOverlay.classList.remove('hidden');
-    setTimeout(() => {
-        customAlertOverlay.classList.remove('opacity-0');
-        customAlertContent.classList.remove('scale-95', 'opacity-0');
-    }, 10);
 }
 
 function hideCustomAlert() {
-    customAlertOverlay.classList.add('opacity-0');
-    customAlertContent.classList.add('scale-95', 'opacity-0');
-    setTimeout(() => {
-        customAlertOverlay.classList.add('hidden');
-    }, 300);
+    customAlertOverlay.classList.add('hidden');
 }
 
 function showLoadingWithProgress() {
@@ -305,13 +312,9 @@ function showLoadingWithProgress() {
     let messageIndex = 0;
     loadingMessageContainer.textContent = animatedLoadingMessages[0];
     loadingMessageInterval = setInterval(() => {
-        loadingMessageContainer.style.opacity = 0;
-        setTimeout(() => {
-            messageIndex = (messageIndex + 1) % animatedLoadingMessages.length;
-            loadingMessageContainer.textContent = animatedLoadingMessages[messageIndex];
-            loadingMessageContainer.style.opacity = 1;
-        }, 300);
-    }, 2000);
+        messageIndex = (messageIndex + 1) % animatedLoadingMessages.length;
+        loadingMessageContainer.textContent = animatedLoadingMessages[messageIndex];
+    }, 2500);
 }
 
 function hideLoadingOverlay() {
@@ -349,18 +352,18 @@ async function checkAuth() {
     const response = await fetch(`${WORKER_URL}/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ checkOnly: true }), // FIX: Added body for ping
+      body: JSON.stringify({ checkOnly: true }), // Ping
       credentials: 'include'
     });
     if (response.status === 401) throw new Error('Unauthorized');
+    // Authorized
     questionnaireModalOverlay.classList.remove('hidden');
     questionnaireModalOverlay.querySelector('div').classList.add('animate-fade-in-scale-up');
   } catch {
+    // Not authorized
     emailModalOverlay.classList.remove('hidden');
   }
 }
-
-// --- EVENT HANDLERS ---
 
 async function handleFormSubmit(e) {
     if (e) e.preventDefault();
@@ -412,7 +415,16 @@ function handleCompleteClick(skillId) {
     skill.status = skill.status === 'completed' ? 'incomplete' : 'completed';
     const skillCard = document.querySelector(`.skill-card[data-skill-id="${skillId}"]`);
     if (skillCard) {
-        skillCard.classList.toggle('completed', skill.status === 'completed');
+        const dot = skillCard.querySelector('.status-dot');
+        if (skill.status === 'completed') {
+            skillCard.classList.add('completed', 'border-teal-500', 'ring-1', 'ring-teal-500');
+            dot.classList.remove('bg-gray-600');
+            dot.classList.add('bg-teal-500', 'shadow-[0_0_8px_rgba(20,184,166,0.6)]');
+        } else {
+            skillCard.classList.remove('completed', 'border-teal-500', 'ring-1', 'ring-teal-500');
+            dot.classList.remove('bg-teal-500', 'shadow-[0_0_8px_rgba(20,184,166,0.6)]');
+            dot.classList.add('bg-gray-600');
+        }
     }
     updateProgress(); 
     closeModal();
@@ -420,7 +432,7 @@ function handleCompleteClick(skillId) {
 
 function handleDownloadPdf() {
     if (!currentRoadmap) {
-        showCustomAlert("No Roadmap", "Please generate a roadmap first before downloading.", () => {});
+        showCustomAlert("No Roadmap", "Please generate a roadmap first.", () => {});
         return;
     }
     const goal = el('career-goal').value || 'career';
@@ -428,29 +440,29 @@ function handleDownloadPdf() {
     const watermarkText = PDF_WATERMARK_TEXT;
     let pdfContentHtml = `
         <style>
-            body { font-family: sans-serif; color: #333; }
-            h1 { font-size: 24px; color: #14b8a6; border-bottom: 2px solid #14b8a6; padding-bottom: 10px; margin-bottom: 20px; }
-            h2 { font-size: 20px; color: #111827; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
-            h3 { font-size: 16px; color: #111827; margin-top: 20px; font-weight: bold; }
-            p { margin-bottom: 10px; line-height: 1.6; }
+            body { font-family: sans-serif; color: #333; padding: 20px; }
+            h1 { font-size: 28px; color: #0d9488; border-bottom: 3px solid #0d9488; padding-bottom: 15px; margin-bottom: 30px; }
+            h2 { font-size: 22px; color: #1f2937; margin-top: 35px; border-bottom: 1px solid #ccc; padding-bottom: 8px; }
+            h3 { font-size: 18px; color: #111827; margin-top: 20px; font-weight: bold; }
+            p { margin-bottom: 8px; line-height: 1.5; font-size: 14px; }
             ul { list-style-type: disc; margin-left: 20px; padding-left: 0; }
-            li { margin-bottom: 5px; }
-            strong { font-weight: bold; }
-            a { color: #14b8a6; text-decoration: none; }
+            li { margin-bottom: 4px; font-size: 14px; }
+            strong { font-weight: bold; color: #374151; }
+            a { color: #0d9488; text-decoration: none; }
         </style>
         <body>
             <h1>${currentRoadmap.name}</h1>
+            <p style="font-size: 16px; margin-bottom: 30px;"><em>${currentRoadmap.summary}</em></p>
     `;
     currentRoadmap.milestones.forEach(milestone => {
         pdfContentHtml += `<h2>${milestone.title}</h2>`;
         milestone.skills.forEach(skill => {
             pdfContentHtml += `
-                <div style="margin-bottom: 25px; page-break-inside: avoid;">
+                <div style="margin-bottom: 20px; page-break-inside: avoid; border: 1px solid #eee; padding: 15px; border-radius: 8px;">
                     <h3>${skill.title}</h3>
                     <p><strong>Description:</strong> ${skill.description || 'N/A'}</p>
-                    <p><strong>Average Salary (PKR):</strong> ${skill.salary_pkr || 'N/A'}</p>
-                    <p><strong>Future Growth:</strong> ${skill.future_growth_rating || 'N/A'} / 5</p>
-                    <p><strong>Opportunities:</strong> ${skill.job_opportunities?.join(', ') || 'N/A'}</p>
+                    <p><strong>Average Salary:</strong> ${skill.salary_pkr || 'N/A'}</p>
+                    <p><strong>Growth Rating:</strong> ${skill.future_growth_rating || 'N/A'} / 5</p>
                     <p><strong>Suggested Resources:</strong></p>
             `;
             if (skill.resources && skill.resources.length > 0) {
@@ -467,10 +479,10 @@ function handleDownloadPdf() {
     });
     pdfContentHtml += '</body>';
     const opt = {
-        margin: [0.5, 0.5, 0.5, 0.5],
+        margin: 0.5,
         filename: filename,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
+        html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
     html2pdf().set(opt).from(pdfContentHtml).toPdf().get('pdf').then(function (pdf) {
@@ -521,7 +533,8 @@ function applyTranslations(lang) {
             elem.textContent = translations[lang][key];
         }
     });
-    el('lang-toggle').textContent = lang.toUpperCase();
+    const langBtn = el('lang-toggle');
+    if(langBtn) langBtn.textContent = lang.toUpperCase();
 }
 
 // --- INITIALIZATION & EVENT LISTENERS ---
@@ -536,16 +549,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1000);
     checkAuth();
     
-    const careerGoalInput = el('career-goal');
-    careerGoalInput.addEventListener('input', () => {
-        if (careerGoalInput.value.trim() === 'admin123') {
-            sessionStorage.setItem('isAdmin', 'true');
-            careerGoalInput.value = ''; 
-            careerGoalInput.placeholder = 'Admin Mode Activated. Restrictions off.';
-            careerGoalInput.classList.add('!ring-green-500'); 
-        }
-    });
-
     questionnaireForm.addEventListener('submit', handleFormSubmit);
     regenerateBtn.addEventListener('click', handleFormSubmit);
     downloadPdfBtn.addEventListener('click', handleDownloadPdf);

@@ -195,7 +195,7 @@ function renderRoadmap(data) {
     `;
 
     // --- PROGRESS BAR (FLOATING STYLE) ---
-    // This creates the bar shown in your reference image
+    // Added 'sticky top-20' to ensure it floats nicely below the main header
     html += `
         <div class="sticky top-24 z-30 max-w-5xl mx-auto mb-12 animate-fade-in-scale-up">
             <div class="progress-floating-bar rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -365,6 +365,7 @@ function setupEventListeners() {
     appDiv.addEventListener('scroll', () => {
         const currentY = appDiv.scrollTop;
         const header = el('main-header');
+        
         if (currentY > lastScrollY && currentY > 50) {
             header.classList.add('hidden-header');
         } else {
@@ -451,4 +452,6 @@ function handleDownloadPdf() {
     html2pdf().from(element).save();
 }
 
-function applyTranslations(lang) {} // Placeholder
+function applyTranslations(lang) {
+    // Implementation if needed
+}

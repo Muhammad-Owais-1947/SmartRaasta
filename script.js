@@ -236,6 +236,7 @@ function createStars(rating) {
     return starsHTML;
 }
 
+// --- MODAL FUNCTIONS ---
 function openModal(skill) {
      modalTitle.textContent = skill.title;
      modalDescription.textContent = skill.description || "No description available.";
@@ -272,6 +273,7 @@ function updateModalCompleteButton(status) {
       modalCompleteBtn.className = `w-full font-bold py-3 px-4 rounded-lg transition-colors border ${status === 'completed' ? 'bg-transparent border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-gray-900' : 'bg-teal-600 border-teal-600 text-white hover:bg-teal-700 hover:border-teal-700'}`;
 }
 
+// --- UTILITY & EVENT HANDLERS ---
 function showCustomAlert(title, message, onConfirm, showCancel = false) {
     customAlertTitle.textContent = title;
     customAlertMessage.textContent = message;
@@ -348,9 +350,11 @@ async function checkAuth() {
       credentials: 'include'
     });
     if (response.status === 401) throw new Error('Unauthorized');
+    // Authorized
     questionnaireModalOverlay.classList.remove('hidden');
     questionnaireModalOverlay.querySelector('div').classList.add('animate-fade-in-scale-up');
   } catch {
+    // Not authorized
     emailModalOverlay.classList.remove('hidden');
   }
 }

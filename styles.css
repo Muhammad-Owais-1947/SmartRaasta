@@ -20,19 +20,19 @@
 
 html.light-mode {
     /* Light Mode (High Contrast) */
-    --bg-primary: #f1f5f9; /* Light Slate background */
+    --bg-primary: #f8fafc; /* Light Slate background */
     --bg-secondary: #ffffff; /* White cards */
     --bg-tertiary: #ffffff; /* White floating bar */
     --text-primary: #0f172a; /* Dark Slate text */
     --text-secondary: #475569; /* Medium Slate text */
     --border-color: #cbd5e1; /* Light border */
     
-    --header-bg: rgba(241, 245, 249, 0.9);
+    --header-bg: rgba(248, 250, 252, 0.9);
     --shadow-color: rgba(148, 163, 184, 0.2);
 }
 
 /* --- GLOBAL SMOOTH TRANSITION --- */
-body, div, p, h1, h2, h3, button, input, select, header {
+body, div, p, h1, h2, h3, button, input, select, header, .skill-card {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
@@ -65,6 +65,7 @@ body {
     background-color: var(--bg-tertiary);
     border: 1px solid var(--border-color);
     box-shadow: 0 10px 25px -5px var(--shadow-color);
+    z-index: 40; /* Ensure it's above cards but below modals (modals usually 50+) */
 }
 
 /* --- BUTTONS --- */
@@ -76,7 +77,7 @@ body {
 }
 
 /* ORANGE HOVER FOR ALL BUTTONS */
-.btn-action:hover, .btn-primary:hover {
+.btn-action:hover, .btn-primary:hover, #regenerate-btn:hover, #download-pdf-btn:hover {
     border-color: var(--accent-orange) !important;
     color: var(--text-primary);
     box-shadow: 0 0 12px var(--accent-orange-glow) !important;
@@ -96,11 +97,11 @@ body {
     overflow: hidden;
 }
 
-/* Hover State: Orange Outline */
-.skill-card:hover {
+/* Default Hover State: Teal Outline (Before Completion) */
+.skill-card:not(.completed):hover {
     transform: translateY(-4px);
-    border-color: var(--accent-orange);
-    box-shadow: 0 10px 20px -10px var(--accent-orange-glow);
+    border-color: var(--accent-teal);
+    box-shadow: 0 10px 20px -10px rgba(20, 184, 166, 0.2);
 }
 
 /* Completed State */
@@ -108,9 +109,12 @@ body {
     border-color: var(--accent-orange) !important;
     background: linear-gradient(to bottom right, rgba(245, 158, 11, 0.08), transparent);
 }
-/* Completed Card Hover */
+
+/* Completed Card Hover: Orange Outline */
 .skill-card.completed:hover {
+    transform: translateY(-4px);
     box-shadow: 0 0 15px var(--accent-orange-glow);
+    border-color: var(--accent-orange) !important;
 }
 
 /* Status Dot */
@@ -139,4 +143,5 @@ input, select {
 input:focus, select:focus {
     border-color: var(--accent-teal) !important;
     ring: 2px solid var(--accent-teal) !important;
+    outline: none;
 }

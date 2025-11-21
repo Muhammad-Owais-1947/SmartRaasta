@@ -2,6 +2,20 @@
 const WORKER_URL = 'https://smartrasta.timespace.workers.dev/';
 const PDF_WATERMARK_TEXT = 'Smart Raasta Report';
 
+// --- MISSING ARRAY RESTORED HERE ---
+const animatedLoadingMessages = [
+    "Analyzing local job market trends...",
+    "Consulting AI career strategists...",
+    "Mapping skills to opportunities...",
+    "Tailoring your personalized path...",
+    "Identifying key growth areas...",
+    "Compiling relevant resources...",
+    "Forecasting salary expectations...",
+    "Structuring your milestones...",
+    "Finalizing your career blueprint...",
+    "Almost there, preparing your Raasta..."
+];
+
 // --- GLOBAL STATE VARIABLES ---
 let currentRoadmap = null;
 let isCompletionPopupShown = false;

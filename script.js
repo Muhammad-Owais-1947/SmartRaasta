@@ -2,7 +2,6 @@
 const WORKER_URL = 'https://smartrasta.timespace.workers.dev';
 const PDF_WATERMARK_TEXT = 'Smart Raasta Report';
 
-// --- MISSING ARRAY RESTORED HERE ---
 const animatedLoadingMessages = [
     "Analyzing local job market trends...",
     "Consulting AI career strategists...",
@@ -122,14 +121,23 @@ async function callGeminiAPI(goal, interests, education, location, lang) {
             body: JSON.stringify(payload),
             credentials: 'include'
         });
-        if (!response.ok) throw new Error(`Worker Error: ${await response.text()}`);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            try {
+                const errJson = JSON.parse(errorText);
+                throw new Error(errJson.error || errorText);
+            } catch(e) {
+                throw new Error(`Worker Error: ${response.status} ${errorText}`);
+            }
+        }
         return await response.json();
     } catch (error) {
         console.error("Error calling Worker:", error);
         const currentLang = localStorage.getItem('lang') || 'en';
         showCustomAlert(
             translations[currentLang].error_title,
-            `Failed to generate roadmap. Details: ${error.message}`,
+            `Failed to generate roadmap. ${error.message}`,
             () => {}
         );
         return null;
@@ -137,7 +145,6 @@ async function callGeminiAPI(goal, interests, education, location, lang) {
 }
 
 function renderRoadmap(roadmapData) {
-    // --- FIX: Validation Check to prevent Crash ---
     if (!roadmapData || !roadmapData.milestones || !Array.isArray(roadmapData.milestones)) {
         console.error("Invalid Data Structure from AI:", roadmapData);
         showCustomAlert(
@@ -148,7 +155,6 @@ function renderRoadmap(roadmapData) {
         hideLoadingOverlay(); 
         return; 
     }
-    // ---------------------------------------------
 
     currentRoadmap = roadmapData;
     isCompletionPopupShown = false;
@@ -342,6 +348,8 @@ async function checkAuth() {
   try {
     const response = await fetch(`${WORKER_URL}/generate`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ checkOnly: true }), // FIX: Added body for ping
       credentials: 'include'
     });
     if (response.status === 401) throw new Error('Unauthorized');

@@ -1,80 +1,7 @@
 // --- SCRIPT CONFIGURATION & CONSTANTS ---
-// Replace with your actual Worker URL from Cloudflare
-const WORKER_URL = 'https://smartrasta.timespace.workers.dev/';  // e.g., https://smartraasta-api.yourworker.workers.dev
-
-// PDF Watermark Configuration: Change this value to set a different watermark. Leave empty for no watermark.
+const WORKER_URL = 'https://smartrasta.timespace.workers.dev/';
 const PDF_WATERMARK_TEXT = 'Smart Raasta Report';
-// System instructions for the Gemini API call. This is the new, detailed prompt.
-const customApiInstructions = `
-You are an expert data researcher and career strategist specializing in the Pakistani job market. Your task is to perform a deep research-based analysis and generate a detailed, well-structured career roadmap based on user inputs.
-### OBJECTIVE
-The purpose is to provide a realistic, region-specific, and actionable roadmap for a Pakistani student or professional. The output MUST be a single, valid JSON object.
-### RESEARCH SCOPE & CONTEXT (For your reference)
-1. **Overview**: Consider Pakistan’s current job/education ecosystem, major employment sectors (IT, textiles, agriculture, services), and emerging industries (AI, cybersecurity, freelancing, renewable energy).
-2. **Regional/Provincial Breakdown**: Factor in the user's province (Punjab, Sindh, KP, Balochistan, GB, AJK) to tailor opportunities. Industrial hubs are in Punjab and Sindh, while other regions have unique local economies.
-3. **Career Pathways**: Identify popular and realistic career paths (e.g., Software Development, Digital Marketing, Cybersecurity, UI/UX, Freelancing, Civil Engineering, Healthcare).
-4. **Education & Skill Gap**: Be aware of the gap between Pakistani academia and industry demands. Emphasize practical skills, certifications, and online learning.
-5. **Localization Insights**: Consider urban vs. rural job availability, language preferences (Urdu/English), and digital literacy challenges.
-6. **The information should be updated.
-7. **Try to find free courses.
-### USER INPUTS (You will be provided with these)
-* **Desired Career Field**: e.g., "Software Development"
-* **Specific Interests**: e.g., "AI, Web Development" (optional)
-* **Highest Education**: e.g., "Bachelor's Degree"
-* **Province**: e.g., "Punjab"
-* **Language**: e.g., "English" or "Roman Urdu"
-### REQUIRED OUTPUT FORMAT
-You MUST return your findings as a single, valid JSON object. Do NOT include any text, markdown, or explanations outside of the JSON structure.
-**JSON Structure:**
-{
-  "name": "Localized Career Name (e.g., 'Software Developer in Punjab')",
-  "summary": "A brief, motivating summary of the career outlook in the specified region.",
-  "milestones": [
-    {
-      "title": "Phase 1: Foundational Skills (Beginner)",
-      "skills": [
-        {
-          "id": "unique-id-1",
-          "title": "Skill Title",
-          "description": "Brief, localized description. Mention its relevance in Pakistan.",
-          "salary_pkr": "PKR 50,000 - 80,000 (Entry Level)",
-          "future_growth_rating": 4.5,
-          "job_opportunities": ["Local Software Houses (Lahore/Karachi)", "Remote/Freelance on Upwork/Fiverr"],
-          "resources": [
-            { "name": "Resource Name (Free/Affordable)", "url": "https://example.com" }
-          ],
-          "status": "incomplete"
-        }
-      ]
-    },
-    {
-      "title": "Phase 2: Intermediate & Specialization",
-      "skills": [
-        // ... more skill objects
-      ]
-    },
-    {
-      "title": "Phase 3: Advanced & Professional Growth",
-      "skills": [
-        // ... more skill objects
-      ]
-    }
-  ]
-}
-`;
-// Animated messages for the loading screen.
-const animatedLoadingMessages = [
-    "Analyzing local job market trends...",
-    "Consulting AI career strategists...",
-    "Mapping skills to opportunities...",
-    "Tailoring your personalized path...",
-    "Identifying key growth areas...",
-    "Compiling relevant resources...",
-    "Forecasting salary expectations...",
-    "Structuring your milestones...",
-    "Finalizing your career blueprint...",
-    "Almost there, preparing your Raasta..."
-];
+
 // --- GLOBAL STATE VARIABLES ---
 let currentRoadmap = null;
 let isCompletionPopupShown = false;
@@ -82,6 +9,7 @@ let lastScrollY = 0;
 let confirmCallback = null;
 let progressInterval = null;
 let loadingMessageInterval = null;
+
 // --- DOM ELEMENT SELECTORS ---
 const el = id => document.getElementById(id);
 const loadingScreen = el('loading-screen'), apiLoadingOverlay = el('api-loading-overlay'),
@@ -102,12 +30,13 @@ const loadingScreen = el('loading-screen'), apiLoadingOverlay = el('api-loading-
       customAlertOverlay = el('custom-alert-overlay'), customAlertContent = el('custom-alert-content'),
       customAlertTitle = el('custom-alert-title'), customAlertMessage = el('custom-alert-message'),
       customAlertConfirmBtn = el('custom-alert-confirm-btn'), customAlertCancelBtn = el('custom-alert-cancel-btn');
-// New for login
+
 const emailModalOverlay = el('email-modal-overlay');
 const emailForm = el('email-form');
 const emailInput = el('email-input');
 const loginBtn = el('login-btn');
-// --- LANGUAGE TRANSLATIONS ---
+
+// --- TRANSLATIONS ---
 const translations = {
     en: {
         questionnaire_title: "Design Your Pakistan-Specific Roadmap",
@@ -150,41 +79,26 @@ const translations = {
         error_title: "Ghalti"
     }
 };
-// --- CORE LOGIC: USAGE, API, UI RENDERING ---
-/**
- * Checks if the user has exceeded the generation limit (3 per hour).
- * @returns {boolean} True if the user is within the limit, false otherwise.
- */
+
+// --- CORE LOGIC ---
+
 function checkUsageLimit() {
-    // Admin override check.
-    if (sessionStorage.getItem('isAdmin') === 'true') {
-        return true; // Bypasses the limit for admin.
-    }
+    if (sessionStorage.getItem('isAdmin') === 'true') return true;
     const now = new Date().getTime();
     const oneHourAgo = now - (60 * 60 * 1000);
     let timestamps = JSON.parse(localStorage.getItem('generationTimestamps')) || [];
-    
     const recentTimestamps = timestamps.filter(ts => ts > oneHourAgo);
     localStorage.setItem('generationTimestamps', JSON.stringify(recentTimestamps));
-    
     return recentTimestamps.length < 3;
 }
-/**
- * Records the timestamp of a new generation in localStorage.
- */
+
 function recordGeneration() {
-    // Admin does not count towards usage limits.
-    if (sessionStorage.getItem('isAdmin') === 'true') {
-        return;
-    }
+    if (sessionStorage.getItem('isAdmin') === 'true') return;
     let timestamps = JSON.parse(localStorage.getItem('generationTimestamps')) || [];
     timestamps.push(new Date().getTime());
     localStorage.setItem('generationTimestamps', JSON.stringify(timestamps));
 }
-/**
- * Calls the Worker to generate the career roadmap.
- * @returns {Promise<object|null>} The roadmap data object or null if an error occurs.
- */
+
 async function callGeminiAPI(goal, interests, education, location, lang) {
     const payload = { goal, interests, education, location, lang };
     try {
@@ -192,7 +106,7 @@ async function callGeminiAPI(goal, interests, education, location, lang) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
-            credentials: 'include'  // Sends cookie for auth
+            credentials: 'include'
         });
         if (!response.ok) throw new Error(`Worker Error: ${await response.text()}`);
         return await response.json();
@@ -207,24 +121,20 @@ async function callGeminiAPI(goal, interests, education, location, lang) {
         return null;
     }
 }
-/**
- * Renders the entire roadmap grid based on the provided data.
- * @param {object} roadmapData - The JSON object returned from the API.
- */
+
 function renderRoadmap(roadmapData) {
-    // --- FIX START: Validation Check ---
+    // --- FIX: Validation Check to prevent Crash ---
     if (!roadmapData || !roadmapData.milestones || !Array.isArray(roadmapData.milestones)) {
-        console.error("Invalid Data Structure:", roadmapData);
+        console.error("Invalid Data Structure from AI:", roadmapData);
         showCustomAlert(
             "Generation Issue", 
-            "The AI response was incomplete. Please try clicking 'Regenerate' to fix it.", 
+            "The AI response was incomplete. Please click 'Regenerate' to try again.", 
             () => {}
         );
-        // Hide loading screen if it's stuck
         hideLoadingOverlay(); 
         return; 
     }
-    // --- FIX END ---
+    // ---------------------------------------------
 
     currentRoadmap = roadmapData;
     isCompletionPopupShown = false;
@@ -244,17 +154,13 @@ function renderRoadmap(roadmapData) {
     
     updateProgress();
     applyTranslations(localStorage.getItem('lang') || 'en');
-    pdfControls.classList.add('hidden'); // Hide initially
+    pdfControls.classList.add('hidden');
     setTimeout(() => {
         pdfControls.classList.remove('hidden');
         pdfControls.classList.add('animate-fade-in-scale-up');
-    }, 60000); // Show after 1 minute
+    }, 60000);
 }
-/**
- * Finds a specific skill object by its ID within the current roadmap data.
- * @param {string} skillId - The unique ID of the skill to find.
- * @returns {object|null} The skill object or null if not found.
- */
+
 function findSkillById(skillId) {
     if (!currentRoadmap) return null;
     for (const milestone of currentRoadmap.milestones) {
@@ -263,9 +169,7 @@ function findSkillById(skillId) {
     }
     return null;
 }
-/**
- * Updates the progress bar and text based on completed skills. Also checks for roadmap completion.
- */
+
 function updateProgress() {
     if (!currentRoadmap) return;
     const allSkills = currentRoadmap.milestones.flatMap(m => m.skills);
@@ -281,20 +185,14 @@ function updateProgress() {
         isCompletionPopupShown = true;
     }
 }
-/**
- * Replaces the progress bar with a "Roadmap Completed!" message.
- */
+
 function renderCompletionState() {
     if(progressContainer) {
         progressContainer.innerHTML = `<div class="flex items-center justify-end h-full text-emerald-400 animate-pulse"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span class="text-base font-medium ml-2" data-translate-key="completed_message">Roadmap Completed!</span></div>`;
         applyTranslations(localStorage.getItem('lang') || 'en');
     }
 }
-/**
- * Generates HTML for star ratings.
- * @param {number} rating - The rating value (e.g., 4.5).
- * @returns {string} The HTML string for the stars.
- */
+
 function createStars(rating) {
     let starsHTML = '';
     const fullStars = Math.floor(rating);
@@ -310,11 +208,7 @@ function createStars(rating) {
     }
     return starsHTML;
 }
-// --- MODAL & OVERLAY LOGIC ---
-/**
- * Opens and populates the skill details modal.
- * @param {object} skill - The skill object to display.
- */
+
 function openModal(skill) {
      modalTitle.textContent = skill.title;
      modalDescription.textContent = skill.description || "No description available.";
@@ -326,15 +220,18 @@ function openModal(skill) {
      setTimeout(() => skillModalOverlay.classList.add('open'), 10);
      applyTranslations(localStorage.getItem('lang') || 'en');
 }
+
 function closeModal() {
      skillModalOverlay.classList.remove('open');
      setTimeout(() => skillModalOverlay.classList.add('hidden'), 300);
 }
+
 function openCompletionModal() {
      completionModalOverlay.classList.remove('hidden');
      setTimeout(() => completionModalOverlay.classList.add('open'), 10);
      applyTranslations(localStorage.getItem('lang') || 'en');
 }
+
 function closeCompletionModal() {
      completionModalOverlay.classList.remove('open');
      setTimeout(() => {
@@ -342,10 +239,12 @@ function closeCompletionModal() {
          renderCompletionState();
      }, 300);
 }
+
 function updateModalCompleteButton(status) {
       modalCompleteBtn.textContent = status === 'completed' ? 'Mark as Incomplete' : 'Mark as Completed';
       modalCompleteBtn.className = `w-full font-bold py-3 px-4 rounded-lg transition-colors ${status === 'completed' ? 'bg-yellow-600 hover:bg-yellow-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`;
 }
+
 function showCustomAlert(title, message, onConfirm, showCancel = false) {
     customAlertTitle.textContent = title;
     customAlertMessage.textContent = message;
@@ -358,6 +257,7 @@ function showCustomAlert(title, message, onConfirm, showCancel = false) {
         customAlertContent.classList.remove('scale-95', 'opacity-0');
     }, 10);
 }
+
 function hideCustomAlert() {
     customAlertOverlay.classList.add('opacity-0');
     customAlertContent.classList.add('scale-95', 'opacity-0');
@@ -365,11 +265,11 @@ function hideCustomAlert() {
         customAlertOverlay.classList.add('hidden');
     }, 300);
 }
+
 function showLoadingWithProgress() {
     clearInterval(progressInterval);
     clearInterval(loadingMessageInterval);
     apiLoadingOverlay.classList.remove('hidden');
-    // Progress bar simulation
     let progress = 0;
     apiLoadingProgressBar.style.width = '0%';
     apiLoadingProgressText.textContent = '0%';
@@ -382,7 +282,6 @@ function showLoadingWithProgress() {
         apiLoadingProgressBar.style.width = `${progress}%`;
         apiLoadingProgressText.textContent = `${Math.round(progress)}%`;
     }, 200);
-    // Animated message loop
     let messageIndex = 0;
     loadingMessageContainer.textContent = animatedLoadingMessages[0];
     loadingMessageInterval = setInterval(() => {
@@ -391,9 +290,10 @@ function showLoadingWithProgress() {
             messageIndex = (messageIndex + 1) % animatedLoadingMessages.length;
             loadingMessageContainer.textContent = animatedLoadingMessages[messageIndex];
             loadingMessageContainer.style.opacity = 1;
-        }, 300); // Wait for fade out
-    }, 2000); // Change message every 2 seconds
+        }, 300);
+    }, 2000);
 }
+
 function hideLoadingOverlay() {
     clearInterval(progressInterval);
     clearInterval(loadingMessageInterval);
@@ -403,7 +303,7 @@ function hideLoadingOverlay() {
         apiLoadingOverlay.classList.add('hidden');
     }, 500);
 }
-// New: Handle login submit
+
 async function handleLogin(e) {
   if (e) e.preventDefault();
   const email = emailInput.value.trim();
@@ -413,11 +313,10 @@ async function handleLogin(e) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
-      credentials: 'include'  // Allows cookie to be set
+      credentials: 'include'
     });
     if (!response.ok) throw new Error(await response.text());
     emailModalOverlay.classList.add('hidden');
-    // Show questionnaire
     questionnaireModalOverlay.classList.remove('hidden');
     questionnaireModalOverlay.querySelector('div').classList.add('animate-fade-in-scale-up');
   } catch (error) {
@@ -425,7 +324,6 @@ async function handleLogin(e) {
   }
 }
 
-// New: Check auth on load
 async function checkAuth() {
   try {
     const response = await fetch(`${WORKER_URL}/generate`, {
@@ -433,20 +331,15 @@ async function checkAuth() {
       credentials: 'include'
     });
     if (response.status === 401) throw new Error('Unauthorized');
-    // If authorized, show questionnaire
     questionnaireModalOverlay.classList.remove('hidden');
     questionnaireModalOverlay.querySelector('div').classList.add('animate-fade-in-scale-up');
   } catch {
-    // Show email modal
     emailModalOverlay.classList.remove('hidden');
   }
 }
 
 // --- EVENT HANDLERS ---
-/**
- * Handles the main form submission for generating a roadmap.
- * @param {Event} e - The form submission event.
- */
+
 async function handleFormSubmit(e) {
     if (e) e.preventDefault();
     const lang = localStorage.getItem('lang') || 'en';
@@ -476,14 +369,13 @@ async function handleFormSubmit(e) {
         recordGeneration();
         renderRoadmap(personalizedRoadmap);
         questionnaireModalOverlay.classList.add('opacity-0', 'pointer-events-none');
-       
-        // Animate main content appearing
         mainContent.classList.remove('hidden');
         mainContent.classList.remove('animate-fade-in-scale-up');
-        void mainContent.offsetWidth; // Force reflow to re-trigger animation
+        void mainContent.offsetWidth;
         mainContent.classList.add('animate-fade-in-scale-up');
     }
 }
+
 function handleGridClick(e) {
     const card = e.target.closest('.skill-card');
     if (card) {
@@ -491,18 +383,19 @@ function handleGridClick(e) {
         if(skill) openModal(skill);
     }
 }
+
 function handleCompleteClick(skillId) {
     const skill = findSkillById(skillId);
     if (!skill) return;
     skill.status = skill.status === 'completed' ? 'incomplete' : 'completed';
-    // This logic correctly reverts progress when a task is unchecked.
     const skillCard = document.querySelector(`.skill-card[data-skill-id="${skillId}"]`);
     if (skillCard) {
         skillCard.classList.toggle('completed', skill.status === 'completed');
     }
-    updateProgress(); // Recalculates progress from scratch.
+    updateProgress(); 
     closeModal();
 }
+
 function handleDownloadPdf() {
     if (!currentRoadmap) {
         showCustomAlert("No Roadmap", "Please generate a roadmap first before downloading.", () => {});
@@ -573,11 +466,13 @@ function handleDownloadPdf() {
         }
     }).save();
 }
+
 function toggleTheme() {
     document.documentElement.classList.toggle('light-mode');
     const isLight = document.documentElement.classList.contains('light-mode');
     localStorage.setItem('theme', isLight ? 'light' : 'dark');
 }
+
 function toggleLanguage() {
     const currentLang = localStorage.getItem('lang') || 'en';
     const newLang = currentLang === 'en' ? 'ur' : 'en';
@@ -596,6 +491,7 @@ function toggleLanguage() {
          applyTranslations(newLang);
     }
 }
+
 function applyTranslations(lang) {
     document.querySelectorAll('[data-translate-key]').forEach(elem => {
         const key = elem.dataset.translateKey;
@@ -605,31 +501,29 @@ function applyTranslations(lang) {
     });
     el('lang-toggle').textContent = lang.toUpperCase();
 }
+
 // --- INITIALIZATION & EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Set initial theme and language
     if (localStorage.getItem('theme') === 'light') {
         document.documentElement.classList.add('light-mode');
     }
     const savedLang = localStorage.getItem('lang') || 'en';
     applyTranslations(savedLang);
-    // Show the initial questionnaire form after a brief delay
     setTimeout(() => {
         loadingScreen.classList.add('opacity-0', 'pointer-events-none');
     }, 1000);
-    // Check auth and show appropriate modal
     checkAuth();
-    // --- Admin override listener ---
+    
     const careerGoalInput = el('career-goal');
     careerGoalInput.addEventListener('input', () => {
         if (careerGoalInput.value.trim() === 'admin123') {
             sessionStorage.setItem('isAdmin', 'true');
-            careerGoalInput.value = ''; // Clear the input
+            careerGoalInput.value = ''; 
             careerGoalInput.placeholder = 'Admin Mode Activated. Restrictions off.';
-            careerGoalInput.classList.add('!ring-green-500'); // Use !important to override
+            careerGoalInput.classList.add('!ring-green-500'); 
         }
     });
-    // Attach all necessary event listeners
+
     questionnaireForm.addEventListener('submit', handleFormSubmit);
     regenerateBtn.addEventListener('click', handleFormSubmit);
     downloadPdfBtn.addEventListener('click', handleDownloadPdf);
@@ -656,6 +550,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     customAlertCancelBtn.addEventListener('click', hideCustomAlert);
     customAlertOverlay.addEventListener('click', e => { if (e.target === customAlertOverlay) hideCustomAlert(); });
-    // New login listener
     emailForm.addEventListener('submit', handleLogin);
 });

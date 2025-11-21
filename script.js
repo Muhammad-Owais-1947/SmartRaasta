@@ -212,6 +212,20 @@ async function callGeminiAPI(goal, interests, education, location, lang) {
  * @param {object} roadmapData - The JSON object returned from the API.
  */
 function renderRoadmap(roadmapData) {
+    // --- FIX START: Validation Check ---
+    if (!roadmapData || !roadmapData.milestones || !Array.isArray(roadmapData.milestones)) {
+        console.error("Invalid Data Structure:", roadmapData);
+        showCustomAlert(
+            "Generation Issue", 
+            "The AI response was incomplete. Please try clicking 'Regenerate' to fix it.", 
+            () => {}
+        );
+        // Hide loading screen if it's stuck
+        hideLoadingOverlay(); 
+        return; 
+    }
+    // --- FIX END ---
+
     currentRoadmap = roadmapData;
     isCompletionPopupShown = false;
     

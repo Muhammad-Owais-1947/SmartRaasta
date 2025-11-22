@@ -24,17 +24,17 @@ let progressInterval = null;
 let loadingMessageInterval = null;
 let lastScrollY = 0;
 
-// --- DOM SELECTORS ---
 const el = id => document.getElementById(id);
 
-// --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', async () => {
+    // Theme Init
     if (localStorage.getItem('theme') === 'light') {
         document.documentElement.classList.add('light-mode');
         updateThemeIcon(true);
+    } else {
+        updateThemeIcon(false);
     }
     
-    // Fast load
     setTimeout(() => {
         const ls = el('loading-screen');
         if(ls) ls.classList.add('opacity-0', 'pointer-events-none');
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
 });
 
-// --- AUTH LOGIC ---
+// --- AUTH ---
 async function checkAuth() {
     try {
         const res = await fetch(`${WORKER_URL}/load`, { method: 'GET', credentials: 'include' });
@@ -186,7 +186,7 @@ function renderRoadmap(data) {
     currentRoadmap = data;
     el('roadmap-content').classList.remove('hidden');
     
-    // --- HEADER (TITLE + SUMMARY) ---
+    // 1. Header Section
     let html = `
         <div class="mb-10 text-center animate-fade-in-scale-up">
             <h1 class="text-3xl md:text-4xl font-bold mb-3" style="color: var(--text-primary)">${data.name}</h1>
@@ -194,36 +194,34 @@ function renderRoadmap(data) {
         </div>
     `;
 
-    // --- PROGRESS BAR (FLOATING STYLE) ---
-    // Added 'sticky top-24' (approx 6rem) to clear the main header (h-16/h-20)
+    // 2. Floating Progress Bar (Sticky within container)
+    // Note: 'top-20' ensures it sits below the main fixed header
     html += `
-        <div class="sticky top-24 z-30 max-w-5xl mx-auto mb-12 animate-fade-in-scale-up">
-            <div class="progress-floating-bar rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-6">
-                <!-- Left: Progress -->
+        <div class="sticky top-20 z-30 mb-10 animate-fade-in-scale-up">
+            <div class="progress-floating-bar rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 backdrop-blur-md">
                 <div class="w-full md:flex-1">
                     <div class="flex justify-between text-xs font-bold tracking-wider mb-2" style="color: var(--text-secondary)">
-                        <span>PROGRESS</span>
+                        <span>YOUR PROGRESS</span>
                         <span id="progress-text" style="color: var(--accent-teal)">0%</span>
                     </div>
                     <div class="w-full h-2.5 rounded-full bg-gray-700 overflow-hidden">
                         <div id="progress-bar-inner" class="h-full bg-teal-500 transition-all duration-500 shadow-[0_0_10px_rgba(20,184,166,0.5)]" style="width: 0%"></div>
                     </div>
                 </div>
-                <!-- Right: Buttons -->
                 <div class="flex gap-3 w-full md:w-auto justify-end">
                     <button id="regenerate-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
                         <i class="fa-solid fa-rotate-right"></i> New
                     </button>
                     <button id="download-pdf-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-file-pdf"></i> Save PDF
+                        <i class="fa-solid fa-file-pdf"></i> PDF
                     </button>
                 </div>
             </div>
         </div>
     `;
 
-    // --- GRID ---
-    html += `<div class="max-w-6xl mx-auto space-y-12">`;
+    // 3. Cards Grid
+    html += `<div class="max-w-6xl mx-auto space-y-12 pb-20">`;
     
     data.milestones.forEach((phase, index) => {
         html += `
@@ -256,9 +254,10 @@ function renderRoadmap(data) {
     });
     html += '</div>';
     
+    // Inject HTML
     el('roadmap-grid-container').innerHTML = html;
     
-    // Re-attach listeners to the new buttons inside the HTML
+    // Re-attach Listeners
     el('regenerate-btn-inner').addEventListener('click', () => {
         el('roadmap-content').classList.add('hidden'); 
         el('questionnaire-container').classList.remove('hidden'); 
@@ -335,7 +334,6 @@ function updateProgress() {
     const bar = el('progress-bar-inner');
     if(bar) {
         bar.style.width = `${pct}%`;
-        // If completed, turn bar orange, else teal
         if(pct > 0) {
              bar.className = 'h-full transition-all duration-500 bg-gradient-to-r from-teal-500 to-teal-400'; 
         }
@@ -348,7 +346,7 @@ function updateProgress() {
     }
 }
 
-// --- HELPERS ---
+// --- SETUP ---
 function setupEventListeners() {
     el('login-btn-header').onclick = () => el('email-modal-overlay').classList.remove('hidden');
     el('info-login-btn').onclick = () => { el('info-modal-overlay').classList.add('hidden'); el('email-modal-overlay').classList.remove('hidden'); };
@@ -360,12 +358,13 @@ function setupEventListeners() {
     el('questionnaire-form').addEventListener('submit', handleFormSubmit);
     el('custom-alert-confirm-btn').onclick = hideCustomAlert;
     
-    // Header Scroll
+    // Better Header Scroll Logic attached to the scrolling container (app)
     const appDiv = el('app');
     appDiv.addEventListener('scroll', () => {
         const currentY = appDiv.scrollTop;
         const header = el('main-header');
         
+        // Hide on scroll down (>50px), Show on scroll up
         if (currentY > lastScrollY && currentY > 50) {
             header.classList.add('hidden-header');
         } else {
@@ -374,7 +373,6 @@ function setupEventListeners() {
         lastScrollY = currentY;
     });
     
-    // Theme
     el('theme-toggle').onclick = () => {
         const root = document.documentElement;
         const isLight = root.classList.toggle('light-mode');
@@ -385,6 +383,7 @@ function setupEventListeners() {
 
 function updateThemeIcon(isLight) {
     const btn = el('theme-toggle');
+    // Explicitly set innerHTML to ensure icon is present
     if(isLight) {
         btn.innerHTML = '<i class="fa-solid fa-sun text-yellow-500 text-xl"></i>';
     } else {
@@ -446,12 +445,9 @@ function hideCustomAlert() {
 }
 
 function handleDownloadPdf() {
-    // Re-use your existing PDF logic from previous steps
     if (!currentRoadmap) return;
-    const element = el('roadmap-grid-container'); // Simple capture for now
+    const element = el('roadmap-grid-container'); 
     html2pdf().from(element).save();
 }
 
-function applyTranslations(lang) {
-    // Implementation if needed
-}
+function applyTranslations(lang) {}

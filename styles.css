@@ -18,7 +18,7 @@
 
 html.light-mode {
     /* Light Mode (High Contrast) */
-    --bg-primary: #f0f4f8; /* Slightly darker white for better contrast */
+    --bg-primary: #f0f4f8;
     --bg-secondary: #ffffff;
     --bg-tertiary: #e2e8f0;
     --text-primary: #0f172a;
@@ -38,7 +38,6 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    /* Subtle background pattern */
     background-image: radial-gradient(circle at 50% 0%, rgba(20, 184, 166, 0.08), transparent 70%);
     background-attachment: fixed;
     transition: background-color 0.3s ease, color 0.3s ease;
@@ -47,7 +46,7 @@ body {
 
 /* Global Transitions for elements */
 div, p, h1, h2, h3, button, input, select, header, .skill-card {
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 }
 
 /* --- SCROLLBAR --- */
@@ -56,23 +55,37 @@ div, p, h1, h2, h3, button, input, select, header, .skill-card {
 ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
-/* --- HEADER --- */
+/* --- HEADER TRANSITIONS --- */
 #main-header {
     background-color: var(--header-bg);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border-color);
-    z-index: 50;
-    transition: transform 0.3s ease, background-color 0.3s ease;
+    /* Smoother ease-out transition for header movement */
+    transition: transform 0.4s cubic-bezier(0.215, 0.610, 0.355, 1), background-color 0.3s ease; 
 }
-#main-header.hidden-header { transform: translateY(-100%); }
+#main-header.hidden-header { 
+    transform: translateY(-100%); 
+}
 
-/* --- PROGRESS BAR (FIXED: NON-STICKY) --- */
-/* Changed from sticky/fixed to relative so it doesn't overlap content */
+/* --- SCROLL REVEAL ANIMATION --- */
+/* Class added by JS IntersectionObserver */
+.reveal-on-scroll {
+    opacity: 0;
+    transform: translateY(40px); /* Starts lower */
+    transition: opacity 0.8s ease-out, transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    will-change: opacity, transform;
+}
+.reveal-on-scroll.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* --- PROGRESS BAR --- */
 .progress-floating-bar {
     background-color: var(--bg-tertiary);
     border: 1px solid var(--border-color);
     box-shadow: 0 4px 20px -5px var(--shadow-color);
-    position: relative; /* Fixes the overlapping issue */
+    position: relative;
     margin-bottom: 2rem;
     z-index: 10; 
 }
@@ -105,9 +118,9 @@ div, p, h1, h2, h3, button, input, select, header, .skill-card {
     cursor: pointer;
 }
 .skill-card:not(.completed):hover {
-    transform: translateY(-4px);
+    transform: translateY(-6px);
     border-color: var(--accent-teal);
-    box-shadow: 0 10px 25px -5px rgba(20, 184, 166, 0.15);
+    box-shadow: 0 12px 30px -5px rgba(20, 184, 166, 0.15);
 }
 .skill-card.completed {
     border-color: var(--accent-orange) !important;
@@ -118,12 +131,11 @@ div, p, h1, h2, h3, button, input, select, header, .skill-card {
     box-shadow: 0 0 15px var(--accent-orange-glow);
 }
 
-/* --- MODALS (IMPROVED VISIBILITY) --- */
+/* --- MODALS --- */
 .modal-overlay {
-    /* Much darker background for better readability of the popup */
     background-color: rgba(0, 0, 0, 0.9) !important; 
-    backdrop-filter: blur(10px); /* Strong blur effect */
-    -webkit-backdrop-filter: blur(10px); /* Safari support */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     z-index: 100;
     transition: opacity 0.3s ease;
 }
@@ -131,18 +143,12 @@ div, p, h1, h2, h3, button, input, select, header, .skill-card {
 .modal-content {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    /* Strong shadow to separate from background */
     box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.8); 
 }
-/* Ensure text inside modal is always readable */
-.modal-content h3, .modal-content h4 {
-    color: var(--text-primary);
-}
-.modal-content p, .modal-content li {
-    color: var(--text-secondary);
-}
+.modal-content h3, .modal-content h4 { color: var(--text-primary); }
+.modal-content p, .modal-content li { color: var(--text-secondary); }
 
-/* --- ANIMATIONS --- */
+/* --- INITIAL ANIMATION --- */
 @keyframes fadeInScaleUp {
     from { opacity: 0; transform: scale(0.98) translateY(10px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
@@ -160,4 +166,28 @@ input, select {
 input:focus, select:focus {
     border-color: var(--accent-teal) !important;
     outline: none;
+}
+
+/* --- PDF SPECIFIC STYLES (Used in the generated HTML string) --- */
+.pdf-container {
+    font-family: 'Inter', sans-serif;
+    color: #111;
+    background: #fff;
+    padding: 40px;
+}
+.pdf-header {
+    border-bottom: 2px solid #14b8a6;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+.pdf-phase {
+    margin-bottom: 30px;
+    page-break-inside: avoid;
+}
+.pdf-skill-item {
+    margin-bottom: 10px;
+    padding: 10px;
+    background: #f8fafc;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
 }

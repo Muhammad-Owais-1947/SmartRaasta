@@ -1,8 +1,6 @@
 // --- CONFIGURATION ---
 const WORKER_URL = 'https://smartrasta.timespace.workers.dev'; 
 const PDF_WATERMARK_TEXT = 'Smart Raasta Report';
-const SESSION_DURATION = 60 * 60 * 1000; // 1 hour
-const WARNING_TIME = 50 * 60 * 1000; // 50 minutes (10 mins before expiry)
 
 const animatedLoadingMessages = [
     "Analyzing local job market trends...",
@@ -25,7 +23,7 @@ let progressInterval = null;
 let loadingMessageInterval = null;
 let lastScrollY = 0;
 let scrollObserver = null; 
-let sessionStartTime = Date.now();
+let sessionExpirationTime = null; // Provided by backend
 
 const el = id => document.getElementById(id);
 
@@ -44,7 +42,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 800);
 
     await checkAuth();
-    startSessionTimer();
+    
+    // Check if we have an active session to start the timer
+    if(sessionExpirationTime) {
+        startSessionTimer();
+    }
 
     if (!currentUserEmail && !localStorage.getItem('visitedBefore')) {
         setTimeout(() => {
@@ -57,22 +59,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupScrollObserver();
 });
 
-// --- SESSION TIMER ---
+// --- BACKEND CONTROLLED TIMER ---
 function startSessionTimer() {
-    const now = Date.now();
-    const timePassed = now - sessionStartTime;
-    
-    // Warning Timer
-    setTimeout(() => {
-        el('session-warning-modal').classList.remove('hidden');
-    }, Math.max(0, WARNING_TIME - timePassed));
+    if (!sessionExpirationTime) return;
 
-    // Expiry Timer
-    setTimeout(() => {
-        el('session-expired-modal').classList.remove('hidden');
-        // Disable interactions essentially by covering everything
-        el('app').classList.add('blur-sm', 'pointer-events-none');
-    }, Math.max(0, SESSION_DURATION - timePassed));
+    // Update timer check every second
+    const timerInterval = setInterval(() => {
+        const now = Date.now();
+        const timeLeft = sessionExpirationTime - now;
+
+        // 1. Warning: 10 minutes left (600000 ms)
+        // We check if we are roughly 10 mins away (with a small buffer so it doesn't fire repeatedly)
+        if (timeLeft <= 600000 && timeLeft > 599000) {
+            el('session-warning-modal').classList.remove('hidden');
+        }
+
+        // 2. Expiry
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            handleSessionExpiry();
+        }
+    }, 1000);
+}
+
+function handleSessionExpiry() {
+    el('session-expired-modal').classList.remove('hidden');
+    el('app').classList.add('blur-sm', 'pointer-events-none'); // Block UI
+    // Force logout in background to ensure security
+    fetch(`${WORKER_URL}/logout`, { method: 'POST', credentials: 'include' });
 }
 
 // --- SCROLL ANIMATIONS ---
@@ -100,13 +114,22 @@ async function checkAuth() {
         if (res.ok) {
             const data = await res.json();
             currentUserEmail = data.email;
+            
+            // BACKEND PROVIDED EXPIRATION
+            if (data.expiresAt) {
+                sessionExpirationTime = data.expiresAt;
+            }
+
             updateHeaderState();
             if (data.data && data.data.milestones) {
                 renderRoadmap(data.data);
                 el('questionnaire-container').classList.add('hidden');
             }
         }
-    } catch (e) { console.log("Guest mode"); }
+    } catch (e) { 
+        console.log("Guest mode or Session Expired"); 
+        sessionExpirationTime = null;
+    }
 }
 
 async function handleLogin(e) {
@@ -129,7 +152,15 @@ async function handleLogin(e) {
 
         if (!res.ok) throw new Error('Login failed');
 
+        const data = await res.json();
         currentUserEmail = emailVal;
+        
+        // Update Expiration from Login Response
+        if (data.expiresAt) {
+            sessionExpirationTime = data.expiresAt;
+            startSessionTimer();
+        }
+
         updateHeaderState();
         el('email-modal-overlay').classList.add('hidden');
         el('info-modal-overlay').classList.add('hidden');
@@ -150,14 +181,22 @@ async function handleLogin(e) {
 }
 
 async function handleLogout() {
-    // Since cookies are HttpOnly, we can't delete them from JS.
-    // We simulate logout by clearing state and reloading the page.
-    // The user will likely need to re-authenticate if the backend doesn't support a logout endpoint.
-    // However, UI-wise, this resets the view.
-    currentUserEmail = null;
-    currentRoadmap = null;
-    localStorage.removeItem('visitedBefore'); // Optional: reset visited state
-    location.reload(); // Reloading resets the app to initial state
+    // Show loading state on button
+    const btn = el('logout-btn');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    
+    try {
+        // Call Backend to clear cookie
+        await fetch(`${WORKER_URL}/logout`, { method: 'POST', credentials: 'include' });
+    } catch (e) {
+        console.error("Logout failed", e);
+    } finally {
+        // Reset Local State
+        currentUserEmail = null;
+        currentRoadmap = null;
+        sessionExpirationTime = null;
+        location.reload(); // Refresh page to clear UI
+    }
 }
 
 async function saveRoadmapToCloud() {
@@ -285,7 +324,6 @@ function renderRoadmap(data) {
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                     ${phase.skills.map((skill) => {
                         const isCompleted = skill.status === 'completed';
-                        // STRICT COLOR LOGIC HERE
                         const iconClass = isCompleted ? 'fa-circle-check text-orange-500' : 'fa-circle text-gray-600';
                         const dotClass = isCompleted ? 'status-dot-orange' : 'status-dot-teal';
                         
@@ -403,104 +441,82 @@ function updateProgress() {
     }
 }
 
-// --- PDF GENERATION (DOCUMENT STYLE) ---
+// --- PDF GENERATION FIX (Uses Hidden Container) ---
 function handleDownloadPdf() {
     if (!currentRoadmap) return;
     
-    // Show a visual indicator
     el('pdf-generating-overlay').classList.remove('hidden');
 
-    // 1. Generate a CLEAN, WHITE-BACKGROUND HTML structure specifically for printing
     const date = new Date().toLocaleDateString();
     
-    // Using inline styles here to ensure the PDF engine (html2pdf) renders exactly what we want,
-    // independent of the web app's dark theme CSS.
+    // We write explicitly white background styles to force the look
     let pdfContent = `
-        <div style="padding: 40px; font-family: 'Helvetica', sans-serif; color: #111; background: #fff; line-height: 1.6;">
-            <!-- Header -->
-            <div style="border-bottom: 4px solid #14b8a6; padding-bottom: 20px; margin-bottom: 40px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="padding: 40px; font-family: 'Helvetica', sans-serif; color: #000; background: #fff; line-height: 1.5;">
+            <div style="border-bottom: 4px solid #14b8a6; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <h1 style="font-size: 32px; color: #0f172a; margin: 0; font-weight: bold;">Smart Raasta</h1>
-                    <p style="color: #64748b; margin: 5px 0 0 0; font-size: 14px;">Personalized Career Roadmap</p>
+                    <h1 style="font-size: 28px; color: #111; margin: 0; font-weight: bold;">Smart Raasta Report</h1>
+                    <p style="color: #555; margin: 5px 0 0 0; font-size: 14px;">${currentRoadmap.name}</p>
                 </div>
-                <div style="text-align: right; font-size: 12px; color: #94a3b8;">
+                <div style="text-align: right; font-size: 12px; color: #777;">
                     <p>Date: ${date}</p>
-                    <p>User: ${currentUserEmail || 'Guest'}</p>
                 </div>
             </div>
             
-            <!-- Summary -->
-            <div style="margin-bottom: 40px;">
-                <h2 style="font-size: 24px; font-weight: bold; color: #0f172a; margin-bottom: 10px;">${currentRoadmap.name}</h2>
-                <p style="font-size: 14px; color: #334155; background: #f1f5f9; padding: 15px; border-radius: 8px; border-left: 4px solid #14b8a6;">
-                    ${currentRoadmap.summary}
-                </p>
+            <div style="margin-bottom: 30px; background: #f8f9fa; padding: 15px; border-left: 5px solid #14b8a6;">
+                <strong style="display:block; margin-bottom:5px; color:#111;">Summary:</strong>
+                <span style="color: #333; font-size: 13px;">${currentRoadmap.summary}</span>
             </div>
     `;
 
-    // Milestones Loop
     currentRoadmap.milestones.forEach((phase, idx) => {
         pdfContent += `
-            <div style="margin-bottom: 30px; page-break-inside: avoid;">
-                <h3 style="font-size: 18px; font-weight: bold; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 15px;">
-                    <span style="background: #14b8a6; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; margin-right: 10px; text-transform: uppercase; vertical-align: middle;">Phase ${idx + 1}</span> 
-                    <span style="vertical-align: middle;">${phase.title}</span>
+            <div style="margin-bottom: 25px; page-break-inside: avoid;">
+                <h3 style="font-size: 18px; font-weight: bold; color: #111; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 15px;">
+                    Phase ${idx + 1}: ${phase.title}
                 </h3>
                 <ul style="list-style: none; padding: 0;">
         `;
         
         phase.skills.forEach(skill => {
-            const statusColor = skill.status === 'completed' ? '#f59e0b' : '#94a3b8';
-            const statusBg = skill.status === 'completed' ? '#fffbeb' : '#f8fafc';
-            const statusBorder = skill.status === 'completed' ? '#fcd34d' : '#cbd5e1';
-            const statusText = skill.status === 'completed' ? '✓ Complete' : '○ To Do';
+            const statusText = skill.status === 'completed' ? '[ COMPLETED ]' : '[ TO DO ]';
+            const statusColor = skill.status === 'completed' ? '#166534' : '#555';
             
             pdfContent += `
-                <li style="margin-bottom: 15px; background: ${statusBg}; border: 1px solid ${statusBorder}; border-radius: 6px; padding: 15px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                        <strong style="font-size: 15px; color: #1e293b;">${skill.title}</strong>
-                        <span style="font-size: 10px; color: ${statusColor}; font-weight: bold; border: 1px solid ${statusColor}; padding: 2px 8px; border-radius: 10px; text-transform: uppercase;">${statusText}</span>
+                <li style="margin-bottom: 10px; background: #fff; border: 1px solid #eee; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <strong style="font-size: 14px; color: #000;">${skill.title}</strong>
+                        <span style="font-size: 10px; font-weight: bold; color: ${statusColor};">${statusText}</span>
                     </div>
-                    <div style="font-size: 12px; color: #475569; margin-bottom: 10px; line-height: 1.5;">
-                        ${skill.description}
-                    </div>
-                    <div style="font-size: 11px; color: #64748b; padding-top: 8px; border-top: 1px dashed ${statusBorder}; display: flex; gap: 15px;">
-                        <span><strong>Salary Estimate:</strong> ${skill.salary_pkr}</span>
-                        <span><strong>Future Demand:</strong> ${createStars(skill.future_growth_rating)}</span>
+                    <div style="font-size: 12px; color: #444; margin-bottom: 5px;">${skill.description}</div>
+                    <div style="font-size: 11px; color: #666;">
+                        Salary: ${skill.salary_pkr} | Growth: ${skill.future_growth_rating}/5
                     </div>
                 </li>
             `;
         });
-        
-        pdfContent += `
-                </ul>
-            </div>
-        `;
+        pdfContent += `</ul></div>`;
     });
 
-    // Footer
     pdfContent += `
-            <div style="margin-top: 50px; border-top: 1px solid #e2e8f0; padding-top: 20px; text-align: center; color: #94a3b8; font-size: 11px;">
-                <p>© 2025 Smart Raasta. All rights reserved. | Generated automatically by AI.</p>
+            <div style="margin-top: 40px; text-align: center; color: #999; font-size: 10px; border-top: 1px solid #eee; padding-top: 10px;">
+                © 2025 Smart Raasta. All rights reserved.
             </div>
         </div>
     `;
 
-    // Inject into hidden container
     const container = el('pdf-container');
     container.innerHTML = pdfContent;
 
-    // Generate PDF
     const opt = {
         margin: 10,
-        filename: `Smart_Raasta_${currentRoadmap.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`,
+        filename: `SmartRaasta_${date.replace(/\//g,'-')}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     html2pdf().from(container).set(opt).save().then(() => {
-        container.innerHTML = ''; // Clean up
+        container.innerHTML = '';
         el('pdf-generating-overlay').classList.add('hidden');
     });
 }

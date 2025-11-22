@@ -36,12 +36,20 @@
         </a>
 
         <div class="flex items-center gap-4">
+            <!-- Login Button (Visible when guest) -->
             <button id="login-btn-header" class="btn-primary px-5 py-2 rounded-lg font-medium text-sm transition-all hover:shadow-lg hover:-translate-y-0.5">
                 <i class="fa-solid fa-right-to-bracket mr-2"></i>Login
             </button>
-            <div id="user-email-display" class="hidden flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium" style="background-color: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
-                <i class="fa-solid fa-user-circle text-teal-500"></i>
-                <span id="user-email-text"></span>
+
+            <!-- User Profile & Logout (Visible when logged in) -->
+            <div id="user-auth-group" class="hidden flex items-center gap-3">
+                <div id="user-email-display" class="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium" style="background-color: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
+                    <i class="fa-solid fa-user-circle text-teal-500"></i>
+                    <span id="user-email-text"></span>
+                </div>
+                <button id="logout-btn" class="px-4 py-2 rounded-lg border text-sm font-medium text-red-400 border-red-900/30 hover:bg-red-900/20 transition-colors" title="Logout">
+                    <i class="fa-solid fa-power-off"></i>
+                </button>
             </div>
 
             <button id="theme-toggle" class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors hover:bg-gray-700/20 border border-transparent" style="color: var(--text-secondary);">
@@ -80,6 +88,37 @@
             <div class="text-4xl mb-4 animate-bounce">📄</div>
             <h3 class="text-2xl font-bold mb-2">Generating Report...</h3>
             <p class="text-gray-400">Formatting document for print.</p>
+        </div>
+    </div>
+
+    <!-- SESSION WARNING MODAL (50 mins) -->
+    <div id="session-warning-modal" class="hidden fixed top-24 right-6 z-[200] animate-fade-in-scale-up">
+        <div class="bg-yellow-900/90 border-l-4 border-yellow-500 text-white p-4 rounded-lg shadow-2xl max-w-sm backdrop-blur-md">
+            <div class="flex items-start gap-3">
+                <div class="text-yellow-400 text-xl mt-1"><i class="fa-solid fa-clock"></i></div>
+                <div>
+                    <h3 class="font-bold text-sm uppercase tracking-wide mb-1 text-yellow-400">Session Warning</h3>
+                    <p class="text-xs text-gray-200 mb-3 leading-relaxed">Your session expires in 10 minutes. Please download your PDF report now to save your data.</p>
+                    <div class="flex gap-2">
+                        <button id="warning-download-btn" class="text-xs bg-white text-yellow-900 font-bold px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">Download PDF</button>
+                        <button id="warning-dismiss-btn" class="text-xs border border-white/30 hover:bg-white/10 text-white px-3 py-1.5 rounded transition-colors">Dismiss</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SESSION EXPIRED MODAL (60 mins) -->
+    <div id="session-expired-modal" class="hidden fixed inset-0 z-[250] flex items-center justify-center modal-overlay p-4 backdrop-blur-xl bg-black/95">
+        <div class="modal-content rounded-2xl p-10 text-center max-w-md w-full animate-fade-in-scale-up border-2 border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.2)]">
+            <div class="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500 text-4xl border border-red-500/20">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <h2 class="text-2xl font-bold mb-3" style="color: var(--text-primary);">Session Expired</h2>
+            <p class="mb-8 text-lg leading-relaxed" style="color: var(--text-secondary);">For security and performance, your session has ended after 1 hour.</p>
+            <button onclick="location.reload()" class="w-full btn-primary font-bold py-4 rounded-xl text-lg shadow-lg hover:scale-[1.02] transition-transform">
+                Start New Session
+            </button>
         </div>
     </div>
 
@@ -157,7 +196,6 @@
         </div>
 
         <!-- INVISIBLE CONTAINER FOR PDF GENERATION -->
-        <!-- This is key: We render a separate, white-mode HTML structure here for the PDF -->
         <div id="pdf-container" class="fixed top-0 left-0 pointer-events-none opacity-0 z-[-1] w-[800px]"></div>
 
     </div>

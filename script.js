@@ -19,10 +19,10 @@ const animatedLoadingMessages = [
 let currentRoadmap = null;
 let currentUserEmail = null;
 let isCompletionPopupShown = false;
-let confirmCallback = null;
 let progressInterval = null;
 let loadingMessageInterval = null;
 let lastScrollY = 0;
+let scrollObserver = null; // To hold our IntersectionObserver
 
 const el = id => document.getElementById(id);
 
@@ -50,7 +50,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     setupEventListeners();
+    setupScrollObserver(); // Initialize animation observer
 });
+
+// --- SCROLL ANIMATIONS ---
+function setupScrollObserver() {
+    const options = {
+        root: el('app'), // Watch scrolling inside #app div
+        threshold: 0.1,  // Trigger when 10% of element is visible
+        rootMargin: "0px 0px -50px 0px" // Trigger slightly before it hits bottom
+    };
+
+    scrollObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                // Optional: Stop observing once animated
+                scrollObserver.unobserve(entry.target);
+            }
+        });
+    }, options);
+}
 
 // --- AUTH ---
 async function checkAuth() {
@@ -188,16 +208,15 @@ function renderRoadmap(data) {
     
     // 1. Header Section
     let html = `
-        <div class="mb-10 text-center animate-fade-in-scale-up">
+        <div class="mb-10 text-center reveal-on-scroll">
             <h1 class="text-3xl md:text-4xl font-bold mb-3" style="color: var(--text-primary)">${data.name}</h1>
             <p class="text-lg max-w-3xl mx-auto" style="color: var(--text-secondary)">${data.summary}</p>
         </div>
     `;
 
-    // 2. Floating Progress Bar (FIXED: NON-STICKY)
-    // Removed 'sticky' and 'top-20' classes. It is now relative and flows with content.
+    // 2. Floating Progress Bar
     html += `
-        <div class="mb-10 animate-fade-in-scale-up">
+        <div class="mb-10 reveal-on-scroll">
             <div class="progress-floating-bar rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 backdrop-blur-md">
                 <div class="w-full md:flex-1">
                     <div class="flex justify-between text-xs font-bold tracking-wider mb-2" style="color: var(--text-secondary)">
@@ -224,18 +243,20 @@ function renderRoadmap(data) {
     html += `<div class="max-w-6xl mx-auto space-y-12 pb-20">`;
     
     data.milestones.forEach((phase, index) => {
+        // Added 'reveal-on-scroll' class here
         html += `
-            <div class="animate-fade-in-scale-up" style="animation-delay: ${index * 100}ms">
+            <div class="reveal-on-scroll">
                 <div class="flex items-center gap-3 mb-6 border-b pb-2" style="border-color: var(--border-color)">
                     <div class="w-8 h-8 rounded-full bg-teal-500/10 text-teal-500 flex items-center justify-center font-bold text-sm border border-teal-500/20">${index + 1}</div>
                     <h2 class="text-xl font-bold" style="color: var(--text-primary)">${phase.title}</h2>
                 </div>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    ${phase.skills.map(skill => {
+                    ${phase.skills.map((skill, sIdx) => {
                         const isCompleted = skill.status === 'completed';
                         const iconClass = isCompleted ? 'fa-circle-check text-orange-500' : 'fa-circle text-gray-600';
                         
+                        // Added stagger effect for cards via style="transition-delay"
                         return `
                         <div class="skill-card p-5 rounded-xl cursor-pointer flex flex-col justify-between group ${isCompleted ? 'completed' : ''}" data-id="${skill.id}">
                             <div class="flex justify-between items-start mb-4">
@@ -269,6 +290,11 @@ function renderRoadmap(data) {
     });
 
     updateProgress();
+    
+    // Trigger Observer for new elements
+    if (scrollObserver) {
+        document.querySelectorAll('.reveal-on-scroll').forEach(el => scrollObserver.observe(el));
+    }
 }
 
 function openSkillModal(id) {
@@ -346,6 +372,97 @@ function updateProgress() {
     }
 }
 
+// --- PDF GENERATION (THE FIX) ---
+function handleDownloadPdf() {
+    if (!currentRoadmap) return;
+    
+    // Show a visual indicator
+    el('pdf-generating-overlay').classList.remove('hidden');
+
+    // 1. Generate a CLEAN HTML structure specifically for printing
+    // We don't use the screen DOM. We create a fresh report.
+    const date = new Date().toLocaleDateString();
+    
+    let pdfContent = `
+        <div style="padding: 40px; font-family: 'Helvetica', sans-serif; color: #111; background: #fff; line-height: 1.6;">
+            <div style="border-bottom: 4px solid #14b8a6; padding-bottom: 20px; margin-bottom: 40px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1 style="font-size: 32px; color: #0f172a; margin: 0;">Smart Raasta</h1>
+                    <p style="color: #64748b; margin: 5px 0 0 0;">Career Roadmap Report</p>
+                </div>
+                <div style="text-align: right; font-size: 12px; color: #94a3b8;">
+                    <p>Generated: ${date}</p>
+                    <p>${currentUserEmail || 'Guest User'}</p>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 40px;">
+                <h2 style="font-size: 24px; font-weight: bold; color: #0f172a; margin-bottom: 10px;">${currentRoadmap.name}</h2>
+                <p style="font-size: 14px; color: #475569; background: #f1f5f9; padding: 15px; border-radius: 8px; border-left: 4px solid #14b8a6;">${currentRoadmap.summary}</p>
+            </div>
+    `;
+
+    // Loop through milestones for clean list format
+    currentRoadmap.milestones.forEach((phase, idx) => {
+        pdfContent += `
+            <div style="margin-bottom: 30px; page-break-inside: avoid;">
+                <h3 style="font-size: 18px; font-weight: bold; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 15px;">
+                    <span style="background: #14b8a6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 14px; margin-right: 8px;">Phase ${idx + 1}</span> 
+                    ${phase.title}
+                </h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        `;
+        
+        phase.skills.forEach(skill => {
+            const statusColor = skill.status === 'completed' ? '#f59e0b' : '#94a3b8';
+            const statusText = skill.status === 'completed' ? '✓ Done' : '○ To Do';
+            
+            pdfContent += `
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
+                        <strong style="font-size: 14px; color: #334155;">${skill.title}</strong>
+                        <span style="font-size: 10px; color: ${statusColor}; font-weight: bold; border: 1px solid ${statusColor}; padding: 2px 4px; border-radius: 4px;">${statusText}</span>
+                    </div>
+                    <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">${skill.description.substring(0, 80)}...</div>
+                    <div style="font-size: 10px; color: #475569;">
+                        <strong>Salary:</strong> ${skill.salary_pkr} <br>
+                        <strong>Growth:</strong> ${createStars(skill.future_growth_rating)}
+                    </div>
+                </div>
+            `;
+        });
+        
+        pdfContent += `
+                </div>
+            </div>
+        `;
+    });
+
+    pdfContent += `
+            <div style="margin-top: 50px; border-top: 1px solid #e2e8f0; padding-top: 20px; text-align: center; color: #94a3b8; font-size: 12px;">
+                <p>© 2025 Smart Raasta. All rights reserved.</p>
+            </div>
+        </div>
+    `;
+
+    const container = el('pdf-container');
+    container.innerHTML = pdfContent;
+
+    const opt = {
+        margin: 0,
+        filename: `Smart_Raasta_Roadmap.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().from(container).set(opt).save().then(() => {
+        container.innerHTML = ''; // Clean up
+        el('pdf-generating-overlay').classList.add('hidden');
+    });
+}
+
+
 // --- SETUP ---
 function setupEventListeners() {
     el('login-btn-header').onclick = () => el('email-modal-overlay').classList.remove('hidden');
@@ -358,13 +475,13 @@ function setupEventListeners() {
     el('questionnaire-form').addEventListener('submit', handleFormSubmit);
     el('custom-alert-confirm-btn').onclick = hideCustomAlert;
     
-    // Better Header Scroll Logic attached to the scrolling container (app)
+    // --- REFINED HEADER SCROLL LOGIC ---
     const appDiv = el('app');
     appDiv.addEventListener('scroll', () => {
         const currentY = appDiv.scrollTop;
         const header = el('main-header');
         
-        // Hide on scroll down (>50px), Show on scroll up
+        // Smooth Header Toggle
         if (currentY > lastScrollY && currentY > 50) {
             header.classList.add('hidden-header');
         } else {
@@ -442,12 +559,6 @@ function showCustomAlert(title, msg) {
 
 function hideCustomAlert() {
     el('custom-alert-overlay').classList.add('hidden');
-}
-
-function handleDownloadPdf() {
-    if (!currentRoadmap) return;
-    const element = el('roadmap-grid-container'); 
-    html2pdf().from(element).save();
 }
 
 function applyTranslations(lang) {}

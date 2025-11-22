@@ -23,6 +23,7 @@ let isCompletionPopupShown = false;
 let progressInterval = null;
 let loadingMessageInterval = null;
 let lastScrollY = 0;
+let scrollObserver = null; 
 let sessionExpirationTime = null;
 let isOtpSent = false;
 

@@ -1,6 +1,8 @@
 // --- CONFIGURATION ---
 const WORKER_URL = 'https://smartrasta.timespace.workers.dev'; 
 const PDF_WATERMARK_TEXT = 'Smart Raasta Report';
+const SESSION_DURATION = 60 * 60 * 1000; // 1 hour
+const WARNING_TIME = 50 * 60 * 1000; // 50 minutes (10 mins before expiry)
 
 const animatedLoadingMessages = [
     "Analyzing local job market trends...",
@@ -23,6 +25,7 @@ let progressInterval = null;
 let loadingMessageInterval = null;
 let lastScrollY = 0;
 let scrollObserver = null; 
+let sessionStartTime = Date.now();
 
 const el = id => document.getElementById(id);
 
@@ -41,6 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 800);
 
     await checkAuth();
+    startSessionTimer();
 
     if (!currentUserEmail && !localStorage.getItem('visitedBefore')) {
         setTimeout(() => {
@@ -52,6 +56,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
     setupScrollObserver();
 });
+
+// --- SESSION TIMER ---
+function startSessionTimer() {
+    const now = Date.now();
+    const timePassed = now - sessionStartTime;
+    
+    // Warning Timer
+    setTimeout(() => {
+        el('session-warning-modal').classList.remove('hidden');
+    }, Math.max(0, WARNING_TIME - timePassed));
+
+    // Expiry Timer
+    setTimeout(() => {
+        el('session-expired-modal').classList.remove('hidden');
+        // Disable interactions essentially by covering everything
+        el('app').classList.add('blur-sm', 'pointer-events-none');
+    }, Math.max(0, SESSION_DURATION - timePassed));
+}
 
 // --- SCROLL ANIMATIONS ---
 function setupScrollObserver() {
@@ -127,6 +149,17 @@ async function handleLogin(e) {
     }
 }
 
+async function handleLogout() {
+    // Since cookies are HttpOnly, we can't delete them from JS.
+    // We simulate logout by clearing state and reloading the page.
+    // The user will likely need to re-authenticate if the backend doesn't support a logout endpoint.
+    // However, UI-wise, this resets the view.
+    currentUserEmail = null;
+    currentRoadmap = null;
+    localStorage.removeItem('visitedBefore'); // Optional: reset visited state
+    location.reload(); // Reloading resets the app to initial state
+}
+
 async function saveRoadmapToCloud() {
     if (!currentUserEmail || !currentRoadmap) return;
     try {
@@ -141,18 +174,18 @@ async function saveRoadmapToCloud() {
 
 function updateHeaderState() {
     const loginBtn = el('login-btn-header');
-    const emailDisplay = el('user-email-display');
+    const userGroup = el('user-auth-group');
     const emailText = el('user-email-text');
     
     if (currentUserEmail) {
         loginBtn.classList.add('hidden');
+        userGroup.classList.remove('hidden');
+        userGroup.classList.add('flex');
         emailText.textContent = currentUserEmail;
-        emailDisplay.classList.remove('hidden');
-        emailDisplay.classList.add('flex');
     } else {
         loginBtn.classList.remove('hidden');
-        emailDisplay.classList.add('hidden');
-        emailDisplay.classList.remove('flex');
+        userGroup.classList.add('hidden');
+        userGroup.classList.remove('flex');
     }
 }
 
@@ -377,51 +410,64 @@ function handleDownloadPdf() {
     // Show a visual indicator
     el('pdf-generating-overlay').classList.remove('hidden');
 
-    // 1. Generate a CLEAN, WHITE-BACKGROUND HTML structure
-    // This creates a string of HTML that looks like a Word Document, unrelated to your screen UI.
+    // 1. Generate a CLEAN, WHITE-BACKGROUND HTML structure specifically for printing
     const date = new Date().toLocaleDateString();
     
+    // Using inline styles here to ensure the PDF engine (html2pdf) renders exactly what we want,
+    // independent of the web app's dark theme CSS.
     let pdfContent = `
         <div style="padding: 40px; font-family: 'Helvetica', sans-serif; color: #111; background: #fff; line-height: 1.6;">
+            <!-- Header -->
             <div style="border-bottom: 4px solid #14b8a6; padding-bottom: 20px; margin-bottom: 40px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <h1 style="font-size: 32px; color: #0f172a; margin: 0;">Smart Raasta</h1>
-                    <p style="color: #64748b; margin: 5px 0 0 0;">Career Roadmap Report</p>
+                    <h1 style="font-size: 32px; color: #0f172a; margin: 0; font-weight: bold;">Smart Raasta</h1>
+                    <p style="color: #64748b; margin: 5px 0 0 0; font-size: 14px;">Personalized Career Roadmap</p>
                 </div>
                 <div style="text-align: right; font-size: 12px; color: #94a3b8;">
-                    <p>Generated: ${date}</p>
-                    <p>${currentUserEmail || 'Guest User'}</p>
+                    <p>Date: ${date}</p>
+                    <p>User: ${currentUserEmail || 'Guest'}</p>
                 </div>
             </div>
             
+            <!-- Summary -->
             <div style="margin-bottom: 40px;">
                 <h2 style="font-size: 24px; font-weight: bold; color: #0f172a; margin-bottom: 10px;">${currentRoadmap.name}</h2>
-                <p style="font-size: 14px; color: #475569; background: #f1f5f9; padding: 15px; border-radius: 8px; border-left: 4px solid #14b8a6;">${currentRoadmap.summary}</p>
+                <p style="font-size: 14px; color: #334155; background: #f1f5f9; padding: 15px; border-radius: 8px; border-left: 4px solid #14b8a6;">
+                    ${currentRoadmap.summary}
+                </p>
             </div>
     `;
 
-    // Loop through milestones for clean document list format
+    // Milestones Loop
     currentRoadmap.milestones.forEach((phase, idx) => {
         pdfContent += `
             <div style="margin-bottom: 30px; page-break-inside: avoid;">
-                <h3 style="font-size: 18px; font-weight: bold; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 15px;">
-                    <span style="background: #14b8a6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 14px; margin-right: 8px;">Phase ${idx + 1}</span> 
-                    ${phase.title}
+                <h3 style="font-size: 18px; font-weight: bold; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 15px;">
+                    <span style="background: #14b8a6; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; margin-right: 10px; text-transform: uppercase; vertical-align: middle;">Phase ${idx + 1}</span> 
+                    <span style="vertical-align: middle;">${phase.title}</span>
                 </h3>
                 <ul style="list-style: none; padding: 0;">
         `;
         
         phase.skills.forEach(skill => {
             const statusColor = skill.status === 'completed' ? '#f59e0b' : '#94a3b8';
+            const statusBg = skill.status === 'completed' ? '#fffbeb' : '#f8fafc';
+            const statusBorder = skill.status === 'completed' ? '#fcd34d' : '#cbd5e1';
             const statusText = skill.status === 'completed' ? '✓ Complete' : '○ To Do';
             
             pdfContent += `
-                <li style="margin-bottom: 15px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
-                        <strong style="font-size: 14px; color: #334155;">${skill.title}</strong>
-                        <span style="font-size: 10px; color: ${statusColor}; font-weight: bold; border: 1px solid ${statusColor}; padding: 2px 6px; border-radius: 4px;">${statusText}</span>
+                <li style="margin-bottom: 15px; background: ${statusBg}; border: 1px solid ${statusBorder}; border-radius: 6px; padding: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                        <strong style="font-size: 15px; color: #1e293b;">${skill.title}</strong>
+                        <span style="font-size: 10px; color: ${statusColor}; font-weight: bold; border: 1px solid ${statusColor}; padding: 2px 8px; border-radius: 10px; text-transform: uppercase;">${statusText}</span>
                     </div>
-                    <div style="font-size: 12px; color: #64748b;">${skill.description}</div>
+                    <div style="font-size: 12px; color: #475569; margin-bottom: 10px; line-height: 1.5;">
+                        ${skill.description}
+                    </div>
+                    <div style="font-size: 11px; color: #64748b; padding-top: 8px; border-top: 1px dashed ${statusBorder}; display: flex; gap: 15px;">
+                        <span><strong>Salary Estimate:</strong> ${skill.salary_pkr}</span>
+                        <span><strong>Future Demand:</strong> ${createStars(skill.future_growth_rating)}</span>
+                    </div>
                 </li>
             `;
         });
@@ -432,29 +478,29 @@ function handleDownloadPdf() {
         `;
     });
 
+    // Footer
     pdfContent += `
-            <div style="margin-top: 50px; border-top: 1px solid #e2e8f0; padding-top: 20px; text-align: center; color: #94a3b8; font-size: 12px;">
-                <p>© 2025 Smart Raasta. All rights reserved.</p>
+            <div style="margin-top: 50px; border-top: 1px solid #e2e8f0; padding-top: 20px; text-align: center; color: #94a3b8; font-size: 11px;">
+                <p>© 2025 Smart Raasta. All rights reserved. | Generated automatically by AI.</p>
             </div>
         </div>
     `;
 
-    // Insert this clean HTML into the invisible PDF container
+    // Inject into hidden container
     const container = el('pdf-container');
     container.innerHTML = pdfContent;
 
-    // Configure html2pdf to print THAT specific container
+    // Generate PDF
     const opt = {
         margin: 10,
-        filename: `Smart_Raasta_${currentRoadmap.name.replace(/\s+/g, '_')}.pdf`,
+        filename: `Smart_Raasta_${currentRoadmap.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     html2pdf().from(container).set(opt).save().then(() => {
-        // Cleanup
-        container.innerHTML = ''; 
+        container.innerHTML = ''; // Clean up
         el('pdf-generating-overlay').classList.add('hidden');
     });
 }
@@ -463,11 +509,20 @@ function handleDownloadPdf() {
 // --- SETUP ---
 function setupEventListeners() {
     el('login-btn-header').onclick = () => el('email-modal-overlay').classList.remove('hidden');
+    el('logout-btn').onclick = handleLogout;
     el('info-login-btn').onclick = () => { el('info-modal-overlay').classList.add('hidden'); el('email-modal-overlay').classList.remove('hidden'); };
     el('info-close-btn').onclick = () => el('info-modal-overlay').classList.add('hidden');
     el('email-cancel-btn').onclick = () => el('email-modal-overlay').classList.add('hidden');
     el('modal-close-btn').onclick = () => el('skill-modal-overlay').classList.add('hidden');
     el('completion-close-btn').onclick = () => el('completion-modal-overlay').classList.add('hidden');
+    
+    // Warning Modal Buttons
+    el('warning-download-btn').onclick = () => {
+        handleDownloadPdf();
+        el('session-warning-modal').classList.add('hidden');
+    };
+    el('warning-dismiss-btn').onclick = () => el('session-warning-modal').classList.add('hidden');
+
     el('email-form').addEventListener('submit', handleLogin);
     el('questionnaire-form').addEventListener('submit', handleFormSubmit);
     el('custom-alert-confirm-btn').onclick = hideCustomAlert;

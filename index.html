@@ -74,12 +74,12 @@
         </div>
     </div>
 
-    <!-- PDF GENERATING OVERLAY (New) -->
+    <!-- PDF GENERATING OVERLAY -->
     <div id="pdf-generating-overlay" class="hidden fixed inset-0 z-[200] flex items-center justify-center modal-overlay backdrop-blur-xl bg-black/80">
         <div class="text-center text-white">
             <div class="text-4xl mb-4 animate-bounce">📄</div>
-            <h3 class="text-2xl font-bold mb-2">Generating PDF Report...</h3>
-            <p class="text-gray-400">Formatting your roadmap for print.</p>
+            <h3 class="text-2xl font-bold mb-2">Generating Report...</h3>
+            <p class="text-gray-400">Formatting document for print.</p>
         </div>
     </div>
 
@@ -157,7 +157,8 @@
         </div>
 
         <!-- INVISIBLE CONTAINER FOR PDF GENERATION -->
-        <div id="pdf-container" class="absolute top-[-9999px] left-[-9999px]"></div>
+        <!-- This is key: We render a separate, white-mode HTML structure here for the PDF -->
+        <div id="pdf-container" class="fixed top-0 left-0 pointer-events-none opacity-0 z-[-1] w-[800px]"></div>
 
     </div>
 

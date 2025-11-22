@@ -29,42 +29,8 @@ let isOtpSent = false;
 
 const el = id => document.getElementById(id);
 
-document.addEventListener('DOMContentLoaded', async () => {
-    // Theme Init
-    if (localStorage.getItem('theme') === 'light') {
-        document.documentElement.classList.add('light-mode');
-        updateThemeIcon(true);
-    } else {
-        updateThemeIcon(false);
-    }
-    
-    setTimeout(() => {
-        const ls = el('loading-screen');
-        if(ls) ls.classList.add('opacity-0', 'pointer-events-none');
-    }, 800);
+// --- FUNCTIONS (DEFINED FIRST) ---
 
-    // Define setupEventListeners BEFORE calling it, or rely on hoisting.
-    // To be safe and clear, I will define it at the bottom but call it here.
-    setupEventListeners();
-
-    await checkAuth();
-    
-    if(sessionExpirationTime) {
-        startSessionTimer();
-    }
-
-    if (!currentUserEmail && !localStorage.getItem('visitedBefore')) {
-        setTimeout(() => {
-            el('info-modal-overlay').classList.remove('hidden');
-            localStorage.setItem('visitedBefore', 'true');
-        }, 1500);
-    }
-    
-    // Initialize Scroll Observer
-    setupScrollObserver();
-});
-
-// --- BACKEND TIMER ---
 function startSessionTimer() {
     if (!sessionExpirationTime) return;
     const timerInterval = setInterval(() => {
@@ -86,7 +52,6 @@ function handleSessionExpiry() {
     fetch(`${WORKER_URL}/logout`, { method: 'POST', credentials: 'include' });
 }
 
-// --- SCROLL ---
 function setupScrollObserver() {
     const options = {
         root: el('app'),
@@ -103,12 +68,14 @@ function setupScrollObserver() {
     }, options);
 }
 
-// --- AUTH ---
 async function checkAuth() {
     try {
         const res = await fetch(`${WORKER_URL}/load`, { method: 'GET', credentials: 'include' });
-        if (res.ok) {
-            const data = await res.json();
+        const data = await res.json();
+        
+        if (res.ok && data.success) {
+            // Logged In
+            console.log("Session found for:", data.email);
             currentUserEmail = data.email;
             if (data.expiresAt) sessionExpirationTime = data.expiresAt;
             updateHeaderState();
@@ -123,6 +90,8 @@ async function checkAuth() {
                 }
             }
         } else {
+            // Guest Mode
+            console.log("Guest mode");
             currentUserEmail = null;
             sessionExpirationTime = null;
             updateHeaderState();
@@ -130,7 +99,6 @@ async function checkAuth() {
     } catch (e) { console.error("Auth check failed", e); }
 }
 
-// --- OTP LOGIN ---
 async function handleLogin(e) {
     e.preventDefault();
     const emailInput = el('email-input');
@@ -145,7 +113,6 @@ async function handleLogin(e) {
 
     try {
         if (!isOtpSent) {
-            // STEP 1: REQUEST OTP
             btn.textContent = 'Sending Code...';
             const res = await fetch(`${WORKER_URL}/send-otp`, {
                 method: 'POST',
@@ -165,7 +132,6 @@ async function handleLogin(e) {
             otpInput.focus();
 
         } else {
-            // STEP 2: VERIFY OTP
             const otpVal = otpInput.value.trim();
             if(!otpVal) throw new Error("Please enter the code");
 
@@ -252,7 +218,6 @@ function updateHeaderState() {
     }
 }
 
-// --- DOWNLOAD JSON ---
 function handleDownloadJson() {
     if (!currentRoadmap) return;
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentRoadmap));
@@ -289,7 +254,6 @@ function handleRestore(e) {
     reader.readAsText(file);
 }
 
-// --- GENERATION ---
 async function handleFormSubmit(e) {
     if(e) e.preventDefault();
     showLoadingWithProgress();
@@ -330,12 +294,32 @@ async function handleFormSubmit(e) {
     }
 }
 
-// --- RENDER ---
+// --- UPDATE PROGRESS FUNCTION (Must be defined before renderRoadmap) ---
+function updateProgress() {
+    if(!currentRoadmap) return;
+    const all = currentRoadmap.milestones.flatMap(m => m.skills);
+    const done = all.filter(s => s.status === 'completed');
+    const pct = all.length > 0 ? Math.round((done.length / all.length) * 100) : 0;
+    
+    const bar = el('progress-bar-inner');
+    if(bar) {
+        bar.style.width = `${pct}%`;
+        if(pct > 0) {
+             bar.className = 'h-full transition-all duration-500 bg-gradient-to-r from-teal-500 to-teal-400'; 
+        }
+    }
+    if(el('progress-text')) el('progress-text').textContent = `${pct}%`;
+
+    if(pct === 100 && !isCompletionPopupShown) {
+        el('completion-modal-overlay').classList.remove('hidden');
+        isCompletionPopupShown = true;
+    }
+}
+
 function renderRoadmap(data) {
     currentRoadmap = data;
     el('roadmap-content').classList.remove('hidden');
     
-    // IMPORTANT: Removed 'reveal-on-scroll' class from these elements to ensure visibility
     let html = `
         <div class="mb-10 text-center animate-fade-in-scale-up">
             <h1 class="text-3xl md:text-4xl font-bold mb-3" style="color: var(--text-primary)">${data.name}</h1>
@@ -409,11 +393,8 @@ function renderRoadmap(data) {
     });
 
     updateProgress();
-    
-    // No longer relying on reveal-on-scroll, content should be visible immediately via animate-fade-in-scale-up
 }
 
-// --- SETUP & HELPERS (THIS WAS MISSING IN PREVIOUS VERSION) ---
 function setupEventListeners() {
     el('login-btn-header').onclick = () => el('email-modal-overlay').classList.remove('hidden');
     el('logout-btn').onclick = handleLogout;
@@ -490,3 +471,6 @@ function showCustomAlert(title, msg) {
 }
 
 function hideCustomAlert() { el('custom-alert-overlay').classList.add('hidden'); }
+
+// --- STARTUP LOGIC (MOVED TO BOTTOM TO ENSURE FUNCTIONS ARE DEFINED) ---
+// This logic runs AFTER all functions above have been read by the browser

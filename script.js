@@ -57,7 +57,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     setupEventListeners();
-    setupScrollObserver();
 });
 
 // --- BACKEND TIMER ---
@@ -80,23 +79,6 @@ function handleSessionExpiry() {
     el('session-expired-modal').classList.remove('hidden');
     el('app').classList.add('blur-sm', 'pointer-events-none'); 
     fetch(`${WORKER_URL}/logout`, { method: 'POST', credentials: 'include' });
-}
-
-// --- SCROLL ---
-function setupScrollObserver() {
-    const options = {
-        root: el('app'),
-        threshold: 0.01,
-        rootMargin: "50px"
-    };
-    scrollObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('is-visible');
-                scrollObserver.unobserve(entry.target);
-            }
-        });
-    }, options);
 }
 
 // --- AUTH ---
@@ -406,7 +388,45 @@ function renderRoadmap(data) {
     updateProgress();
 }
 
-// --- HELPERS ---
+// --- SETUP & HELPERS (The Missing Part) ---
+function setupEventListeners() {
+    el('login-btn-header').onclick = () => el('email-modal-overlay').classList.remove('hidden');
+    el('logout-btn').onclick = handleLogout;
+    el('info-login-btn').onclick = () => { el('info-modal-overlay').classList.add('hidden'); el('email-modal-overlay').classList.remove('hidden'); };
+    el('info-close-btn').onclick = () => el('info-modal-overlay').classList.add('hidden');
+    el('email-cancel-btn').onclick = () => {
+        el('email-modal-overlay').classList.add('hidden');
+        resetLoginModal();
+    };
+    el('modal-close-btn').onclick = () => el('skill-modal-overlay').classList.add('hidden');
+    el('completion-close-btn').onclick = () => el('completion-modal-overlay').classList.add('hidden');
+    
+    el('open-restore-btn').onclick = () => el('restore-modal-overlay').classList.remove('hidden');
+    el('restore-cancel-btn').onclick = () => el('restore-modal-overlay').classList.add('hidden');
+    el('restore-file-input').addEventListener('change', handleRestore);
+
+    el('warning-dismiss-btn').onclick = () => el('session-warning-modal').classList.add('hidden');
+
+    el('login-form').addEventListener('submit', handleLogin);
+    el('questionnaire-form').addEventListener('submit', handleFormSubmit);
+    el('custom-alert-confirm-btn').onclick = hideCustomAlert;
+    
+    const appDiv = el('app');
+    appDiv.addEventListener('scroll', () => {
+        const currentY = appDiv.scrollTop;
+        const header = el('main-header');
+        if (currentY > lastScrollY && currentY > 50) header.classList.add('hidden-header');
+        else header.classList.remove('hidden-header');
+        lastScrollY = currentY;
+    });
+    el('theme-toggle').onclick = () => {
+        const root = document.documentElement;
+        const isLight = root.classList.toggle('light-mode');
+        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        updateThemeIcon(isLight);
+    };
+}
+
 function updateThemeIcon(isLight) {
     const btn = el('theme-toggle');
     if(isLight) btn.innerHTML = '<i class="fa-solid fa-sun text-yellow-500 text-xl"></i>';
@@ -438,5 +458,10 @@ function recordGeneration() {
     localStorage.setItem('generationTimestamps', JSON.stringify(ts));
 }
 
-function showCustomAlert(title, msg) { el('custom-alert-title').textContent = title; el('custom-alert-message').textContent = msg; el('custom-alert-overlay').classList.remove('hidden'); }
+function showCustomAlert(title, msg) { 
+    el('custom-alert-title').textContent = title; 
+    el('custom-alert-message').textContent = msg; 
+    el('custom-alert-overlay').classList.remove('hidden'); 
+}
+
 function hideCustomAlert() { el('custom-alert-overlay').classList.add('hidden'); }

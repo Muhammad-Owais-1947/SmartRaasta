@@ -2,38 +2,36 @@
 :root {
     /* Dark Mode (Default) */
     --bg-primary: #020617;
-    --bg-secondary: #0f172a; /* Card bg */
-    --bg-tertiary: #1e293b; /* Floating bar bg */
+    --bg-secondary: #0f172a;
+    --bg-tertiary: #1e293b;
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --border-color: #334155;
     
     --accent-teal: #14b8a6;
-    --accent-teal-hover: #0d9488;
     --accent-orange: #f59e0b;
-    --accent-orange-hover: #d97706;
     --accent-orange-glow: rgba(245, 158, 11, 0.4);
     
-    --header-bg: rgba(2, 6, 23, 0.85);
+    --header-bg: rgba(2, 6, 23, 0.95); /* More opaque for better readability */
     --shadow-color: rgba(0, 0, 0, 0.5);
 }
 
 html.light-mode {
     /* Light Mode (High Contrast) */
-    --bg-primary: #f8fafc; /* Light Slate background */
-    --bg-secondary: #ffffff; /* White cards */
-    --bg-tertiary: #ffffff; /* White floating bar */
-    --text-primary: #0f172a; /* Dark Slate text */
-    --text-secondary: #475569; /* Medium Slate text */
-    --border-color: #cbd5e1; /* Light border */
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #ffffff;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --border-color: #cbd5e1;
     
-    --header-bg: rgba(248, 250, 252, 0.9);
+    --header-bg: rgba(255, 255, 255, 0.95);
     --shadow-color: rgba(148, 163, 184, 0.2);
 }
 
 /* --- GLOBAL SMOOTH TRANSITION --- */
 body, div, p, h1, h2, h3, button, input, select, header, .skill-card {
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* --- GENERAL LAYOUT --- */
@@ -41,7 +39,6 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    /* Subtle gradient overlay for depth */
     background-image: radial-gradient(circle at 50% 0%, rgba(20, 184, 166, 0.05), transparent 70%);
     background-attachment: fixed;
 }
@@ -52,11 +49,13 @@ body {
 ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
-/* --- HEADER --- */
+/* --- HEADER (Fixed at Top) --- */
 #main-header {
     background-color: var(--header-bg);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border-color);
+    z-index: 50; /* Top layer for navigation */
+    transition: transform 0.3s ease;
 }
 #main-header.hidden-header { transform: translateY(-100%); }
 
@@ -65,8 +64,9 @@ body {
     background-color: var(--bg-tertiary);
     border: 1px solid var(--border-color);
     box-shadow: 0 10px 25px -5px var(--shadow-color);
-    /* Adjusted z-index to be below modals (usually 50+) but above standard content */
-    z-index: 30; 
+    z-index: 40; /* Below header, above content */
+    position: sticky;
+    top: 80px; /* Height of header + slight gap */
 }
 
 /* --- BUTTONS --- */
@@ -74,13 +74,10 @@ body {
     background-color: transparent;
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
-    transition: all 0.2s ease;
 }
-
-/* ORANGE HOVER FOR ALL BUTTONS */
 .btn-action:hover, .btn-primary:hover, #regenerate-btn:hover, #download-pdf-btn:hover {
     border-color: var(--accent-orange) !important;
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
     box-shadow: 0 0 12px var(--accent-orange-glow) !important;
     transform: translateY(-1px);
 }
@@ -96,36 +93,32 @@ body {
     border: 1px solid var(--border-color);
     position: relative;
     overflow: hidden;
+    z-index: 10;
 }
-
-/* Default Hover State: Teal Outline (Before Completion) */
 .skill-card:not(.completed):hover {
     transform: translateY(-4px);
     border-color: var(--accent-teal);
     box-shadow: 0 10px 20px -10px rgba(20, 184, 166, 0.2);
 }
-
-/* Completed State */
 .skill-card.completed {
     border-color: var(--accent-orange) !important;
     background: linear-gradient(to bottom right, rgba(245, 158, 11, 0.08), transparent);
 }
-
-/* Completed Card Hover: Orange Outline */
 .skill-card.completed:hover {
     transform: translateY(-4px);
     box-shadow: 0 0 15px var(--accent-orange-glow);
-    border-color: var(--accent-orange) !important;
 }
 
-/* Status Dot */
-.status-dot {
-    background-color: var(--border-color);
-    transition: all 0.3s ease;
+/* --- MODALS (High Contrast Overlay) --- */
+.modal-overlay {
+    background-color: rgba(0, 0, 0, 0.85) !important; /* Darker background for better focus */
+    backdrop-filter: blur(8px);
+    z-index: 100; /* Topmost */
 }
-.skill-card.completed .status-dot {
-    background-color: var(--accent-orange);
-    box-shadow: 0 0 8px var(--accent-orange);
+.modal-content {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
 /* --- ANIMATIONS --- */
@@ -135,14 +128,9 @@ body {
 }
 .animate-fade-in-scale-up { animation: fadeInScaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
-/* --- FORM INPUTS (Light Mode Fix) --- */
+/* --- INPUTS --- */
 input, select {
     background-color: var(--bg-secondary) !important;
     color: var(--text-primary) !important;
     border-color: var(--border-color) !important;
-}
-input:focus, select:focus {
-    border-color: var(--accent-teal) !important;
-    ring: 2px solid var(--accent-teal) !important;
-    outline: none;
 }

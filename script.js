@@ -195,7 +195,7 @@ function renderRoadmap(data) {
     `;
 
     // --- PROGRESS BAR (FLOATING STYLE) ---
-    // Added 'sticky top-20' to ensure it floats nicely below the main header
+    // Added 'sticky top-24' (approx 6rem) to clear the main header (h-16/h-20)
     html += `
         <div class="sticky top-24 z-30 max-w-5xl mx-auto mb-12 animate-fade-in-scale-up">
             <div class="progress-floating-bar rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-6">

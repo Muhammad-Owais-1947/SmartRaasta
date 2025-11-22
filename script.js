@@ -29,7 +29,200 @@ let isOtpSent = false;
 
 const el = id => document.getElementById(id);
 
-// --- FUNCTIONS (DEFINED FIRST) ---
+// --- 1. HELPER FUNCTIONS (DEFINED FIRST) ---
+
+function updateThemeIcon(isLight) {
+    const btn = el('theme-toggle');
+    if(isLight) btn.innerHTML = '<i class="fa-solid fa-sun text-yellow-500 text-xl"></i>';
+    else btn.innerHTML = '<i class="fa-solid fa-moon text-gray-400 text-xl"></i>';
+}
+
+function createStars(n) { return '★'.repeat(Math.floor(n)) + (n % 1 ? '½' : '') + '☆'.repeat(5 - Math.ceil(n)); }
+
+function showLoadingWithProgress() {
+    el('api-loading-overlay').classList.remove('hidden');
+    let w = 0;
+    progressInterval = setInterval(() => { if(w < 95) w += Math.random() * 2; el('api-loading-progress-bar').style.width = `${w}%`; el('api-loading-progress-text').textContent = `${Math.round(w)}%`; }, 100);
+    el('loading-message-container').textContent = animatedLoadingMessages[0];
+    let i = 0;
+    loadingMessageInterval = setInterval(() => { i = (i + 1) % animatedLoadingMessages.length; el('loading-message-container').textContent = animatedLoadingMessages[i]; }, 2000);
+}
+
+function hideLoadingOverlay() {
+    clearInterval(progressInterval);
+    clearInterval(loadingMessageInterval);
+    el('api-loading-progress-bar').style.width = '100%';
+    setTimeout(() => el('api-loading-overlay').classList.add('hidden'), 400);
+}
+
+function recordGeneration() {
+    if (sessionStorage.getItem('isAdmin')) return;
+    const ts = JSON.parse(localStorage.getItem('generationTimestamps') || '[]');
+    ts.push(Date.now());
+    localStorage.setItem('generationTimestamps', JSON.stringify(ts));
+}
+
+function showCustomAlert(title, msg) { 
+    el('custom-alert-title').textContent = title; 
+    el('custom-alert-message').textContent = msg; 
+    el('custom-alert-overlay').classList.remove('hidden'); 
+}
+
+function hideCustomAlert() { el('custom-alert-overlay').classList.add('hidden'); }
+
+function updateProgress() {
+    if(!currentRoadmap) return;
+    const all = currentRoadmap.milestones.flatMap(m => m.skills);
+    const done = all.filter(s => s.status === 'completed');
+    const pct = all.length > 0 ? Math.round((done.length / all.length) * 100) : 0;
+    
+    const bar = el('progress-bar-inner');
+    if(bar) {
+        bar.style.width = `${pct}%`;
+        if(pct > 0) {
+             bar.className = 'h-full transition-all duration-500 bg-gradient-to-r from-teal-500 to-teal-400'; 
+        }
+    }
+    if(el('progress-text')) el('progress-text').textContent = `${pct}%`;
+
+    if(pct === 100 && !isCompletionPopupShown) {
+        el('completion-modal-overlay').classList.remove('hidden');
+        isCompletionPopupShown = true;
+    }
+}
+
+function openSkillModal(id) {
+    if(!currentRoadmap) return;
+    let skill = null;
+    currentRoadmap.milestones.forEach(m => {
+        const found = m.skills.find(s => s.id === id);
+        if(found) skill = found;
+    });
+    if(!skill) return;
+
+    el('modal-title').textContent = skill.title;
+    el('modal-description').textContent = skill.description;
+    
+    el('modal-details-grid').innerHTML = `
+        <div class="p-3 rounded-lg border" style="background-color: var(--bg-primary); border-color: var(--border-color)">
+            <div class="text-xs uppercase mb-1" style="color: var(--text-secondary)">Est. Salary</div>
+            <div class="font-bold" style="color: var(--text-primary)">${skill.salary_pkr}</div>
+        </div>
+        <div class="p-3 rounded-lg border" style="background-color: var(--bg-primary); border-color: var(--border-color)">
+            <div class="text-xs uppercase mb-1" style="color: var(--text-secondary)">Demand</div>
+            <div class="text-yellow-400 text-sm">${createStars(skill.future_growth_rating)}</div>
+        </div>
+    `;
+
+    el('modal-resources').innerHTML = skill.resources.map(r => 
+        `<li class="flex items-center justify-between p-2 rounded hover:bg-gray-700/10 transition-colors">
+            <span style="color: var(--text-primary)">${r.name}</span>
+            <a href="${r.url}" target="_blank" class="text-teal-500 hover:text-orange-500 transition-colors"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+        </li>`
+    ).join('');
+
+    const btn = el('modal-complete-btn');
+    btn.onclick = () => toggleSkillComplete(skill.id);
+    
+    if(skill.status === 'completed') {
+        btn.textContent = 'Mark as Incomplete';
+        btn.className = 'w-full py-3 rounded-lg font-bold border-2 border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white transition-all';
+    } else {
+        btn.textContent = 'Mark as Completed';
+        btn.className = 'w-full py-3 rounded-lg font-bold btn-primary hover:shadow-lg transition-all';
+    }
+
+    el('skill-modal-overlay').classList.remove('hidden');
+}
+
+function toggleSkillComplete(id) {
+    currentRoadmap.milestones.forEach(m => {
+        const s = m.skills.find(sk => sk.id === id);
+        if(s) s.status = s.status === 'completed' ? 'incomplete' : 'completed';
+    });
+    el('skill-modal-overlay').classList.add('hidden');
+    renderRoadmap(currentRoadmap);
+    if(currentUserEmail) saveRoadmapToCloud();
+}
+
+function renderRoadmap(data) {
+    currentRoadmap = data;
+    el('roadmap-content').classList.remove('hidden');
+    
+    let html = `
+        <div class="mb-10 text-center animate-fade-in-scale-up">
+            <h1 class="text-3xl md:text-4xl font-bold mb-3" style="color: var(--text-primary)">${data.name}</h1>
+            <p class="text-lg max-w-3xl mx-auto" style="color: var(--text-secondary)">${data.summary}</p>
+        </div>
+    `;
+
+    html += `
+        <div class="mb-10 animate-fade-in-scale-up">
+            <div class="progress-floating-bar rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 backdrop-blur-md">
+                <div class="w-full md:flex-1">
+                    <div class="flex justify-between text-xs font-bold tracking-wider mb-2" style="color: var(--text-secondary)">
+                        <span>YOUR PROGRESS</span>
+                        <span id="progress-text" style="color: var(--accent-teal)">0%</span>
+                    </div>
+                    <div class="w-full h-2.5 rounded-full bg-gray-700 overflow-hidden">
+                        <div id="progress-bar-inner" class="h-full bg-teal-500 transition-all duration-500 shadow-[0_0_10px_rgba(20,184,166,0.5)]" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="flex gap-3 w-full md:w-auto justify-end">
+                    <button id="regenerate-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-right"></i> New
+                    </button>
+                    <button id="download-json-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                        <i class="fa-solid fa-download"></i> Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    html += `<div class="max-w-6xl mx-auto space-y-12 pb-20">`;
+    data.milestones.forEach((phase, index) => {
+        html += `
+            <div class="animate-fade-in-scale-up">
+                <div class="flex items-center gap-3 mb-6 border-b pb-2" style="border-color: var(--border-color)">
+                    <div class="w-8 h-8 rounded-full bg-teal-500/10 text-teal-500 flex items-center justify-center font-bold text-sm border border-teal-500/20">${index + 1}</div>
+                    <h2 class="text-xl font-bold" style="color: var(--text-primary)">${phase.title}</h2>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                    ${phase.skills.map((skill) => {
+                        const isCompleted = skill.status === 'completed';
+                        const iconClass = isCompleted ? 'fa-circle-check text-orange-500' : 'fa-circle text-gray-600';
+                        const dotClass = isCompleted ? 'status-dot-orange' : 'status-dot-teal';
+                        return `
+                        <div class="skill-card p-5 rounded-xl cursor-pointer flex flex-col justify-between group ${isCompleted ? 'completed' : ''}" data-id="${skill.id}">
+                            <div class="flex justify-between items-start mb-4">
+                                <h3 class="font-semibold text-sm pr-2 group-hover:text-teal-500 transition-colors" style="color: var(--text-primary)">${skill.title}</h3>
+                                <i class="fa-regular ${iconClass} text-sm transition-colors"></i>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <span class="view-details-text text-[10px] uppercase tracking-wider font-bold opacity-0 group-hover:opacity-100 transition-opacity">View Details</span>
+                                <div class="status-dot w-2 h-2 rounded-full ${dotClass}"></div>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>`;
+    });
+    html += '</div>';
+    
+    el('roadmap-grid-container').innerHTML = html;
+    el('regenerate-btn-inner').addEventListener('click', () => {
+        el('roadmap-content').classList.add('hidden'); 
+        el('questionnaire-container').classList.remove('hidden'); 
+    });
+    el('download-json-btn-inner').addEventListener('click', handleDownloadJson);
+    
+    document.querySelectorAll('.skill-card').forEach(card => {
+        card.addEventListener('click', () => openSkillModal(card.dataset.id));
+    });
+
+    updateProgress();
+}
 
 function startSessionTimer() {
     if (!sessionExpirationTime) return;
@@ -74,7 +267,6 @@ async function checkAuth() {
         const data = await res.json();
         
         if (res.ok && data.success) {
-            // Logged In
             console.log("Session found for:", data.email);
             currentUserEmail = data.email;
             if (data.expiresAt) sessionExpirationTime = data.expiresAt;
@@ -90,7 +282,6 @@ async function checkAuth() {
                 }
             }
         } else {
-            // Guest Mode
             console.log("Guest mode");
             currentUserEmail = null;
             sessionExpirationTime = null;
@@ -294,107 +485,6 @@ async function handleFormSubmit(e) {
     }
 }
 
-// --- UPDATE PROGRESS FUNCTION (Must be defined before renderRoadmap) ---
-function updateProgress() {
-    if(!currentRoadmap) return;
-    const all = currentRoadmap.milestones.flatMap(m => m.skills);
-    const done = all.filter(s => s.status === 'completed');
-    const pct = all.length > 0 ? Math.round((done.length / all.length) * 100) : 0;
-    
-    const bar = el('progress-bar-inner');
-    if(bar) {
-        bar.style.width = `${pct}%`;
-        if(pct > 0) {
-             bar.className = 'h-full transition-all duration-500 bg-gradient-to-r from-teal-500 to-teal-400'; 
-        }
-    }
-    if(el('progress-text')) el('progress-text').textContent = `${pct}%`;
-
-    if(pct === 100 && !isCompletionPopupShown) {
-        el('completion-modal-overlay').classList.remove('hidden');
-        isCompletionPopupShown = true;
-    }
-}
-
-function renderRoadmap(data) {
-    currentRoadmap = data;
-    el('roadmap-content').classList.remove('hidden');
-    
-    let html = `
-        <div class="mb-10 text-center animate-fade-in-scale-up">
-            <h1 class="text-3xl md:text-4xl font-bold mb-3" style="color: var(--text-primary)">${data.name}</h1>
-            <p class="text-lg max-w-3xl mx-auto" style="color: var(--text-secondary)">${data.summary}</p>
-        </div>
-    `;
-
-    html += `
-        <div class="mb-10 animate-fade-in-scale-up">
-            <div class="progress-floating-bar rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 backdrop-blur-md">
-                <div class="w-full md:flex-1">
-                    <div class="flex justify-between text-xs font-bold tracking-wider mb-2" style="color: var(--text-secondary)">
-                        <span>YOUR PROGRESS</span>
-                        <span id="progress-text" style="color: var(--accent-teal)">0%</span>
-                    </div>
-                    <div class="w-full h-2.5 rounded-full bg-gray-700 overflow-hidden">
-                        <div id="progress-bar-inner" class="h-full bg-teal-500 transition-all duration-500 shadow-[0_0_10px_rgba(20,184,166,0.5)]" style="width: 0%"></div>
-                    </div>
-                </div>
-                <div class="flex gap-3 w-full md:w-auto justify-end">
-                    <button id="regenerate-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-rotate-right"></i> New
-                    </button>
-                    <button id="download-json-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-download"></i> Data
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    html += `<div class="max-w-6xl mx-auto space-y-12 pb-20">`;
-    data.milestones.forEach((phase, index) => {
-        html += `
-            <div class="animate-fade-in-scale-up">
-                <div class="flex items-center gap-3 mb-6 border-b pb-2" style="border-color: var(--border-color)">
-                    <div class="w-8 h-8 rounded-full bg-teal-500/10 text-teal-500 flex items-center justify-center font-bold text-sm border border-teal-500/20">${index + 1}</div>
-                    <h2 class="text-xl font-bold" style="color: var(--text-primary)">${phase.title}</h2>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    ${phase.skills.map((skill) => {
-                        const isCompleted = skill.status === 'completed';
-                        const iconClass = isCompleted ? 'fa-circle-check text-orange-500' : 'fa-circle text-gray-600';
-                        const dotClass = isCompleted ? 'status-dot-orange' : 'status-dot-teal';
-                        return `
-                        <div class="skill-card p-5 rounded-xl cursor-pointer flex flex-col justify-between group ${isCompleted ? 'completed' : ''}" data-id="${skill.id}">
-                            <div class="flex justify-between items-start mb-4">
-                                <h3 class="font-semibold text-sm pr-2 group-hover:text-teal-500 transition-colors" style="color: var(--text-primary)">${skill.title}</h3>
-                                <i class="fa-regular ${iconClass} text-sm transition-colors"></i>
-                            </div>
-                            <div class="flex justify-between items-end">
-                                <span class="view-details-text text-[10px] uppercase tracking-wider font-bold opacity-0 group-hover:opacity-100 transition-opacity">View Details</span>
-                                <div class="status-dot w-2 h-2 rounded-full ${dotClass}"></div>
-                            </div>
-                        </div>`;
-                    }).join('')}
-                </div>
-            </div>`;
-    });
-    html += '</div>';
-    
-    el('roadmap-grid-container').innerHTML = html;
-    el('regenerate-btn-inner').addEventListener('click', () => {
-        el('roadmap-content').classList.add('hidden'); 
-        el('questionnaire-container').classList.remove('hidden'); 
-    });
-    el('download-json-btn-inner').addEventListener('click', handleDownloadJson);
-    
-    document.querySelectorAll('.skill-card').forEach(card => {
-        card.addEventListener('click', () => openSkillModal(card.dataset.id));
-    });
-
-    updateProgress();
-}
-
 function setupEventListeners() {
     el('login-btn-header').onclick = () => el('email-modal-overlay').classList.remove('hidden');
     el('logout-btn').onclick = handleLogout;
@@ -433,44 +523,36 @@ function setupEventListeners() {
     };
 }
 
-function updateThemeIcon(isLight) {
-    const btn = el('theme-toggle');
-    if(isLight) btn.innerHTML = '<i class="fa-solid fa-sun text-yellow-500 text-xl"></i>';
-    else btn.innerHTML = '<i class="fa-solid fa-moon text-gray-400 text-xl"></i>';
-}
+// --- 2. MAIN LOGIC (AT THE BOTTOM TO ENSURE FUNCTIONS ARE READY) ---
 
-function createStars(n) { return '★'.repeat(Math.floor(n)) + (n % 1 ? '½' : '') + '☆'.repeat(5 - Math.ceil(n)); }
+document.addEventListener('DOMContentLoaded', async () => {
+    // Theme Init
+    if (localStorage.getItem('theme') === 'light') {
+        document.documentElement.classList.add('light-mode');
+        updateThemeIcon(true);
+    } else {
+        updateThemeIcon(false);
+    }
+    
+    setTimeout(() => {
+        const ls = el('loading-screen');
+        if(ls) ls.classList.add('opacity-0', 'pointer-events-none');
+    }, 800);
 
-function showLoadingWithProgress() {
-    el('api-loading-overlay').classList.remove('hidden');
-    let w = 0;
-    progressInterval = setInterval(() => { if(w < 95) w += Math.random() * 2; el('api-loading-progress-bar').style.width = `${w}%`; el('api-loading-progress-text').textContent = `${Math.round(w)}%`; }, 100);
-    el('loading-message-container').textContent = animatedLoadingMessages[0];
-    let i = 0;
-    loadingMessageInterval = setInterval(() => { i = (i + 1) % animatedLoadingMessages.length; el('loading-message-container').textContent = animatedLoadingMessages[i]; }, 2000);
-}
+    // Only call checkAuth after everything is defined
+    await checkAuth();
+    
+    if(sessionExpirationTime) {
+        startSessionTimer();
+    }
 
-function hideLoadingOverlay() {
-    clearInterval(progressInterval);
-    clearInterval(loadingMessageInterval);
-    el('api-loading-progress-bar').style.width = '100%';
-    setTimeout(() => el('api-loading-overlay').classList.add('hidden'), 400);
-}
+    if (!currentUserEmail && !localStorage.getItem('visitedBefore')) {
+        setTimeout(() => {
+            el('info-modal-overlay').classList.remove('hidden');
+            localStorage.setItem('visitedBefore', 'true');
+        }, 1500);
+    }
 
-function recordGeneration() {
-    if (sessionStorage.getItem('isAdmin')) return;
-    const ts = JSON.parse(localStorage.getItem('generationTimestamps') || '[]');
-    ts.push(Date.now());
-    localStorage.setItem('generationTimestamps', JSON.stringify(ts));
-}
-
-function showCustomAlert(title, msg) { 
-    el('custom-alert-title').textContent = title; 
-    el('custom-alert-message').textContent = msg; 
-    el('custom-alert-overlay').classList.remove('hidden'); 
-}
-
-function hideCustomAlert() { el('custom-alert-overlay').classList.add('hidden'); }
-
-// --- STARTUP LOGIC (MOVED TO BOTTOM TO ENSURE FUNCTIONS ARE DEFINED) ---
-// This logic runs AFTER all functions above have been read by the browser
+    setupEventListeners();
+    setupScrollObserver();
+});

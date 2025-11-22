@@ -1,7 +1,5 @@
 // --- CONFIGURATION ---
-// Changed 'const' to 'var' to prevent redeclaration errors if script re-runs
 var WORKER_URL = 'https://smartrasta.timespace.workers.dev'; 
-var PDF_WATERMARK_TEXT = 'Smart Raasta Report';
 var SESSION_DURATION = 60 * 60 * 1000; 
 var WARNING_TIME = 50 * 60 * 1000; 
 
@@ -121,10 +119,15 @@ async function checkAuth() {
                 renderRoadmap(data.data);
                 el('questionnaire-container').classList.add('hidden');
             }
+        } else if (res.status === 401) {
+            // Handle 401 gracefully
+            console.log("Session invalid or expired.");
+            currentUserEmail = null;
+            sessionExpirationTime = null;
+            updateHeaderState();
         }
     } catch (e) { 
-        console.log("Guest mode or Session Expired"); 
-        sessionExpirationTime = null;
+        console.log("Guest mode check failed"); 
     }
 }
 
@@ -292,9 +295,6 @@ function renderRoadmap(data) {
                     <button id="regenerate-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
                         <i class="fa-solid fa-rotate-right"></i> New
                     </button>
-                    <button id="download-pdf-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-file-pdf"></i> PDF Report
-                    </button>
                 </div>
             </div>
         </div>
@@ -340,7 +340,6 @@ function renderRoadmap(data) {
         el('roadmap-content').classList.add('hidden'); 
         el('questionnaire-container').classList.remove('hidden'); 
     });
-    el('download-pdf-btn-inner').addEventListener('click', handleDownloadPdf);
     
     document.querySelectorAll('.skill-card').forEach(card => {
         card.addEventListener('click', () => openSkillModal(card.dataset.id));
@@ -428,98 +427,6 @@ function updateProgress() {
     }
 }
 
-// --- FIXED PDF GENERATION ---
-function handleDownloadPdf() {
-    if (!currentRoadmap) return;
-    
-    // 1. Show Loading Overlay (z-index 200) to indicate activity
-    el('pdf-generating-overlay').classList.remove('hidden');
-
-    const date = new Date().toLocaleDateString();
-    
-    // 2. Build content string with EXPLICIT white styles
-    let pdfContent = `
-        <div style="padding: 40px; font-family: 'Helvetica', sans-serif; color: #000; background: #fff; line-height: 1.5; width: 100%; min-height: 100vh;">
-            <div style="border-bottom: 4px solid #14b8a6; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h1 style="font-size: 28px; color: #111; margin: 0; font-weight: bold;">Smart Raasta Report</h1>
-                    <p style="color: #555; margin: 5px 0 0 0; font-size: 14px;">${currentRoadmap.name}</p>
-                </div>
-                <div style="text-align: right; font-size: 12px; color: #777;">
-                    <p>Date: ${date}</p>
-                </div>
-            </div>
-            
-            <div style="margin-bottom: 30px; background: #f8f9fa; padding: 15px; border-left: 5px solid #14b8a6;">
-                <strong style="display:block; margin-bottom:5px; color:#111;">Summary:</strong>
-                <span style="color: #333; font-size: 13px;">${currentRoadmap.summary}</span>
-            </div>
-    `;
-
-    currentRoadmap.milestones.forEach((phase, idx) => {
-        pdfContent += `
-            <div style="margin-bottom: 25px; page-break-inside: avoid;">
-                <h3 style="font-size: 18px; font-weight: bold; color: #111; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 15px;">
-                    Phase ${idx + 1}: ${phase.title}
-                </h3>
-                <ul style="list-style: none; padding: 0;">
-        `;
-        
-        phase.skills.forEach(skill => {
-            const statusText = skill.status === 'completed' ? '[ COMPLETED ]' : '[ TO DO ]';
-            const statusColor = skill.status === 'completed' ? '#166534' : '#555';
-            
-            pdfContent += `
-                <li style="margin-bottom: 10px; background: #fff; border: 1px solid #eee; padding: 10px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                        <strong style="font-size: 14px; color: #000;">${skill.title}</strong>
-                        <span style="font-size: 10px; font-weight: bold; color: ${statusColor};">${statusText}</span>
-                    </div>
-                    <div style="font-size: 12px; color: #444; margin-bottom: 5px;">${skill.description}</div>
-                    <div style="font-size: 11px; color: #666;">
-                        Salary: ${skill.salary_pkr} | Growth: ${skill.future_growth_rating}/5
-                    </div>
-                </li>
-            `;
-        });
-        pdfContent += `</ul></div>`;
-    });
-
-    pdfContent += `
-            <div style="margin-top: 40px; text-align: center; color: #999; font-size: 10px; border-top: 1px solid #eee; padding-top: 10px;">
-                © 2025 Smart Raasta. All rights reserved.
-            </div>
-        </div>
-    `;
-
-    const container = el('pdf-container');
-    container.innerHTML = pdfContent;
-    
-    // 3. CRITICAL: Make visible for browser paint engine
-    // We move it on screen (top:0) but put it under the loading overlay (z-index:150)
-    container.style.top = '0';
-    container.style.zIndex = '150'; 
-
-    const opt = {
-        margin: 10,
-        filename: `SmartRaasta_${date.replace(/\//g,'-')}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, scrollY: 0, windowWidth: 800 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    // 4. Delay to allow browser to paint the HTML before capturing
-    setTimeout(() => {
-        html2pdf().from(container).set(opt).save().then(() => {
-            // 5. Clean up and hide again
-            container.innerHTML = '';
-            container.style.top = '-10000px';
-            el('pdf-generating-overlay').classList.add('hidden');
-        });
-    }, 800); // 800ms delay to ensure no blank page
-}
-
-
 // --- SETUP ---
 function setupEventListeners() {
     el('login-btn-header').onclick = () => el('email-modal-overlay').classList.remove('hidden');
@@ -530,11 +437,6 @@ function setupEventListeners() {
     el('modal-close-btn').onclick = () => el('skill-modal-overlay').classList.add('hidden');
     el('completion-close-btn').onclick = () => el('completion-modal-overlay').classList.add('hidden');
     
-    // Warning Modal Buttons
-    el('warning-download-btn').onclick = () => {
-        handleDownloadPdf();
-        el('session-warning-modal').classList.add('hidden');
-    };
     el('warning-dismiss-btn').onclick = () => el('session-warning-modal').classList.add('hidden');
 
     el('email-form').addEventListener('submit', handleLogin);

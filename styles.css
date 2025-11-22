@@ -65,7 +65,8 @@ body {
     background-color: var(--bg-tertiary);
     border: 1px solid var(--border-color);
     box-shadow: 0 10px 25px -5px var(--shadow-color);
-    z-index: 40; /* Ensure it's above cards but below modals (modals usually 50+) */
+    /* Adjusted z-index to be below modals (usually 50+) but above standard content */
+    z-index: 30; 
 }
 
 /* --- BUTTONS --- */

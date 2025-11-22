@@ -23,12 +23,14 @@ let isCompletionPopupShown = false;
 let progressInterval = null;
 let loadingMessageInterval = null;
 let lastScrollY = 0;
+let scrollObserver = null; 
 let sessionExpirationTime = null;
 let isOtpSent = false;
 
 const el = id => document.getElementById(id);
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Theme Init
     if (localStorage.getItem('theme') === 'light') {
         document.documentElement.classList.add('light-mode');
         updateThemeIcon(true);
@@ -55,6 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     setupEventListeners();
+    setupScrollObserver();
 });
 
 // --- BACKEND TIMER ---
@@ -77,6 +80,23 @@ function handleSessionExpiry() {
     el('session-expired-modal').classList.remove('hidden');
     el('app').classList.add('blur-sm', 'pointer-events-none'); 
     fetch(`${WORKER_URL}/logout`, { method: 'POST', credentials: 'include' });
+}
+
+// --- SCROLL ---
+function setupScrollObserver() {
+    const options = {
+        root: el('app'),
+        threshold: 0.01,
+        rootMargin: "50px"
+    };
+    scrollObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                scrollObserver.unobserve(entry.target);
+            }
+        });
+    }, options);
 }
 
 // --- AUTH ---
@@ -307,7 +327,6 @@ async function handleFormSubmit(e) {
 }
 
 // --- RENDER ---
-// REMOVED 'reveal-on-scroll' class to force visibility
 function renderRoadmap(data) {
     currentRoadmap = data;
     el('roadmap-content').classList.remove('hidden');
@@ -387,8 +406,15 @@ function renderRoadmap(data) {
     updateProgress();
 }
 
-// ... [Rest of helpers unchanged] ...
+// --- HELPERS ---
+function updateThemeIcon(isLight) {
+    const btn = el('theme-toggle');
+    if(isLight) btn.innerHTML = '<i class="fa-solid fa-sun text-yellow-500 text-xl"></i>';
+    else btn.innerHTML = '<i class="fa-solid fa-moon text-gray-400 text-xl"></i>';
+}
+
 function createStars(n) { return '★'.repeat(Math.floor(n)) + (n % 1 ? '½' : '') + '☆'.repeat(5 - Math.ceil(n)); }
+
 function showLoadingWithProgress() {
     el('api-loading-overlay').classList.remove('hidden');
     let w = 0;
@@ -397,17 +423,20 @@ function showLoadingWithProgress() {
     let i = 0;
     loadingMessageInterval = setInterval(() => { i = (i + 1) % animatedLoadingMessages.length; el('loading-message-container').textContent = animatedLoadingMessages[i]; }, 2000);
 }
+
 function hideLoadingOverlay() {
     clearInterval(progressInterval);
     clearInterval(loadingMessageInterval);
     el('api-loading-progress-bar').style.width = '100%';
     setTimeout(() => el('api-loading-overlay').classList.add('hidden'), 400);
 }
+
 function recordGeneration() {
     if (sessionStorage.getItem('isAdmin')) return;
     const ts = JSON.parse(localStorage.getItem('generationTimestamps') || '[]');
     ts.push(Date.now());
     localStorage.setItem('generationTimestamps', JSON.stringify(ts));
 }
+
 function showCustomAlert(title, msg) { el('custom-alert-title').textContent = title; el('custom-alert-message').textContent = msg; el('custom-alert-overlay').classList.remove('hidden'); }
 function hideCustomAlert() { el('custom-alert-overlay').classList.add('hidden'); }

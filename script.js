@@ -32,10 +32,27 @@ const el = id => document.getElementById(id);
 // --- HELPER FUNCTIONS ---
 
 function updateThemeIcon(isLight) {
-    const btn = el('theme-toggle');
-    if (!btn) return;
-    if(isLight) btn.innerHTML = '<i class="fa-solid fa-sun text-yellow-500 text-2xl"></i>';
-    else btn.innerHTML = '<i class="fa-solid fa-moon text-gray-400 text-xl"></i>';
+    const container = el('theme-icon-container');
+    if (!container) return;
+
+    // 1. Remove old icon
+    container.innerHTML = '';
+    
+    // 2. Create new icon element based on state
+    const newIcon = document.createElement('i');
+    if(isLight) {
+        newIcon.className = 'fa-solid fa-sun text-yellow-500 text-2xl';
+    } else {
+        newIcon.className = 'fa-solid fa-moon text-gray-400 text-xl';
+    }
+
+    // 3. Add new icon
+    container.appendChild(newIcon);
+
+    // 4. Trigger CSS Animation
+    container.classList.remove('animate-rotate-in');
+    void container.offsetWidth; // trigger reflow
+    container.classList.add('animate-rotate-in');
 }
 
 function createStars(n) { return '★'.repeat(Math.floor(n || 0)) + ((n || 0) % 1 ? '½' : '') + '☆'.repeat(5 - Math.ceil(n || 0)); }
@@ -163,12 +180,16 @@ function openSkillModal(id) {
 
     if(completeBtn) {
         completeBtn.onclick = () => toggleSkillComplete(skill.id);
+        
+        // Distinct Animation & Styling for Buttons
         if(skill.status === 'completed') {
-            completeBtn.textContent = 'Mark as Incomplete';
-            completeBtn.className = 'w-full py-4 rounded-xl font-bold border-2 border-orange-500 text-orange-500 hover:bg-orange-500/10 transition-all text-lg';
+            // STATE: ALREADY COMPLETED (User can mark incomplete)
+            completeBtn.innerHTML = '<i class="fa-solid fa-rotate-left mr-2"></i> Mark as Incomplete';
+            completeBtn.className = 'w-full py-4 rounded-xl font-bold border-2 border-orange-500 text-orange-500 hover:bg-orange-500/10 transition-all text-lg shadow-none';
         } else {
-            completeBtn.textContent = 'Mark as Completed';
-            completeBtn.className = 'w-full py-4 rounded-xl font-bold btn-primary hover:shadow-xl transition-all text-lg';
+            // STATE: INCOMPLETE (User can mark complete)
+            completeBtn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> Mark as Completed';
+            completeBtn.className = 'w-full py-4 rounded-xl font-bold btn-primary hover:shadow-xl hover:scale-[1.02] transition-all text-lg';
         }
     }
 
@@ -203,16 +224,16 @@ function renderRoadmap(data) {
     
     // Header Section of Roadmap
     let html = `
-        <div class="mb-16 text-center animate-fade-in-scale-up">
+        <div class="mb-12 text-center animate-fade-in-scale-up">
             <div class="inline-block px-4 py-1 rounded-full bg-teal-500/10 text-teal-400 text-sm font-bold mb-4 border border-teal-500/20">CAREER PATH</div>
             <h1 class="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight" style="color: var(--text-primary)">${data.name}</h1>
             <p class="text-xl max-w-4xl mx-auto leading-relaxed" style="color: var(--text-secondary)">${data.summary}</p>
         </div>
     `;
 
-    // Sticky Progress Bar
+    // Progress Bar Section (Relative Flow)
     html += `
-        <div class="mb-16 animate-fade-in-scale-up sticky top-24 z-40 px-2">
+        <div class="mb-12 animate-fade-in-scale-up relative z-40">
             <div class="progress-floating-bar rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl bg-opacity-90">
                 <div class="w-full md:flex-1">
                     <div class="flex justify-between text-xs font-bold tracking-wider mb-3" style="color: var(--text-secondary)">
@@ -224,18 +245,18 @@ function renderRoadmap(data) {
                     </div>
                 </div>
                 <div class="flex gap-3 w-full md:w-auto justify-end">
-                    <button id="regenerate-btn-inner" class="btn-action px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2">
-                        <i class="fa-solid fa-rotate-right"></i> New Path
+                    <button id="regenerate-btn-inner" class="btn-action px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 group">
+                        <i class="fa-solid fa-rotate-right group-hover:rotate-180 transition-transform duration-500"></i> New Path
                     </button>
-                    <button id="download-json-btn-inner" class="btn-action px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2">
-                        <i class="fa-solid fa-download"></i> Save Data
+                    <button id="download-json-btn-inner" class="btn-action px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 group">
+                        <i class="fa-solid fa-download group-hover:animate-bounce"></i> Save Data
                     </button>
                 </div>
             </div>
         </div>
     `;
 
-    html += `<div class="max-w-7xl mx-auto space-y-16 pb-20">`;
+    html += `<div class="max-w-7xl mx-auto space-y-16">`;
     
     data.milestones.forEach((phase, index) => {
         const skills = phase.skills || []; 
@@ -256,21 +277,22 @@ function renderRoadmap(data) {
                 const isCompleted = skill.status === 'completed';
                 const iconClass = isCompleted ? 'fa-solid fa-circle-check text-orange-500' : 'fa-regular fa-circle text-gray-500';
                 const cardBgClass = isCompleted ? 'completed' : '';
+                const hoverTextClass = isCompleted ? 'text-orange-500' : 'group-hover-text-teal';
                 
                 html += `
                 <div class="skill-card p-6 rounded-2xl cursor-pointer flex flex-col justify-between group min-h-[180px] ${cardBgClass}" data-id="${skill.id}">
                     <div>
                         <div class="flex justify-between items-start mb-4">
-                            <div class="p-2 rounded-lg bg-gray-700/20 group-hover:bg-teal-500/20 transition-colors">
-                                <i class="fa-solid fa-cube text-gray-400 group-hover:text-teal-500 transition-colors"></i>
+                            <div class="p-2 rounded-lg bg-gray-700/20 transition-colors ${isCompleted ? 'group-hover:bg-orange-500/20' : 'group-hover:bg-teal-500/20'}">
+                                <i class="fa-solid fa-cube text-gray-400 transition-colors ${hoverTextClass}"></i>
                             </div>
                             <i class="${iconClass} text-xl transition-all duration-300 transform group-hover:scale-110"></i>
                         </div>
-                        <h3 class="font-bold text-lg pr-2 group-hover:text-teal-400 transition-colors leading-snug" style="color: var(--text-primary)">${skill.title}</h3>
+                        <h3 class="font-bold text-lg pr-2 transition-colors leading-snug" style="color: var(--text-primary)">${skill.title}</h3>
                     </div>
                     <div class="flex justify-between items-end mt-4">
-                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-teal-500 transition-colors flex items-center gap-1">
-                            Explore <i class="fa-solid fa-arrow-right opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 transform duration-300"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 transition-colors flex items-center gap-1 ${hoverTextClass}">
+                            Details <i class="fa-solid fa-arrow-right opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 transform duration-300"></i>
                         </span>
                     </div>
                 </div>`;
@@ -380,14 +402,29 @@ async function handleLogin(e) {
             });
             
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to send code');
+            
+            // --- 1. HANDLE DEV MODE OTP (SAFEGUARD) ---
+            if (res.ok && data.dev_otp) {
+                // Keep this just in case your keys aren't set up yet
+                showCustomAlert('Development Mode', `Login Code: ${data.dev_otp} \n(Copy this code!)`);
+            } 
+            // --- 2. HANDLE REAL ERRORS ---
+            else if (!res.ok) {
+                 throw new Error(data.error || 'Failed to send code');
+            }
 
             isOtpSent = true;
             const stepEmail = el('step-email');
             const stepOtp = el('step-otp');
             if(stepEmail) stepEmail.classList.add('hidden');
             if(stepOtp) stepOtp.classList.remove('hidden');
-            if(msg) msg.textContent = `Code sent to ${emailVal}. Check your inbox.`;
+            
+            if (data.dev_otp) {
+                if(msg) msg.textContent = `Dev Mode: Code shown in alert.`;
+            } else {
+                if(msg) msg.textContent = `Code sent to ${emailVal}. Check your inbox.`;
+            }
+            
             btn.textContent = 'Verify Code';
             emailInput.disabled = true;
             otpInput.focus();

@@ -22,7 +22,7 @@ let isCompletionPopupShown = false;
 let progressInterval = null;
 let loadingMessageInterval = null;
 let lastScrollY = 0;
-let scrollObserver = null; // To hold our IntersectionObserver
+let scrollObserver = null; 
 
 const el = id => document.getElementById(id);
 
@@ -50,22 +50,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     setupEventListeners();
-    setupScrollObserver(); // Initialize animation observer
+    setupScrollObserver();
 });
 
 // --- SCROLL ANIMATIONS ---
 function setupScrollObserver() {
     const options = {
-        root: el('app'), // Watch scrolling inside #app div
-        threshold: 0.1,  // Trigger when 10% of element is visible
-        rootMargin: "0px 0px -50px 0px" // Trigger slightly before it hits bottom
+        root: el('app'),
+        threshold: 0.1,
+        rootMargin: "0px 0px -50px 0px"
     };
 
     scrollObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 entry.target.classList.add('is-visible');
-                // Optional: Stop observing once animated
                 scrollObserver.unobserve(entry.target);
             }
         });
@@ -232,7 +231,7 @@ function renderRoadmap(data) {
                         <i class="fa-solid fa-rotate-right"></i> New
                     </button>
                     <button id="download-pdf-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-file-pdf"></i> PDF
+                        <i class="fa-solid fa-file-pdf"></i> PDF Report
                     </button>
                 </div>
             </div>
@@ -243,7 +242,6 @@ function renderRoadmap(data) {
     html += `<div class="max-w-6xl mx-auto space-y-12 pb-20">`;
     
     data.milestones.forEach((phase, index) => {
-        // Added 'reveal-on-scroll' class here
         html += `
             <div class="reveal-on-scroll">
                 <div class="flex items-center gap-3 mb-6 border-b pb-2" style="border-color: var(--border-color)">
@@ -252,11 +250,12 @@ function renderRoadmap(data) {
                 </div>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    ${phase.skills.map((skill, sIdx) => {
+                    ${phase.skills.map((skill) => {
                         const isCompleted = skill.status === 'completed';
+                        // STRICT COLOR LOGIC HERE
                         const iconClass = isCompleted ? 'fa-circle-check text-orange-500' : 'fa-circle text-gray-600';
+                        const dotClass = isCompleted ? 'status-dot-orange' : 'status-dot-teal';
                         
-                        // Added stagger effect for cards via style="transition-delay"
                         return `
                         <div class="skill-card p-5 rounded-xl cursor-pointer flex flex-col justify-between group ${isCompleted ? 'completed' : ''}" data-id="${skill.id}">
                             <div class="flex justify-between items-start mb-4">
@@ -264,8 +263,8 @@ function renderRoadmap(data) {
                                 <i class="fa-regular ${iconClass} text-sm transition-colors"></i>
                             </div>
                             <div class="flex justify-between items-end">
-                                <span class="text-[10px] uppercase tracking-wider font-bold opacity-0 group-hover:opacity-100 transition-opacity" style="color: var(--text-secondary)">View Details</span>
-                                <div class="status-dot w-2 h-2 rounded-full"></div>
+                                <span class="view-details-text text-[10px] uppercase tracking-wider font-bold opacity-0 group-hover:opacity-100 transition-opacity">View Details</span>
+                                <div class="status-dot w-2 h-2 rounded-full ${dotClass}"></div>
                             </div>
                         </div>
                         `;
@@ -291,7 +290,6 @@ function renderRoadmap(data) {
 
     updateProgress();
     
-    // Trigger Observer for new elements
     if (scrollObserver) {
         document.querySelectorAll('.reveal-on-scroll').forEach(el => scrollObserver.observe(el));
     }
@@ -372,15 +370,15 @@ function updateProgress() {
     }
 }
 
-// --- PDF GENERATION (THE FIX) ---
+// --- PDF GENERATION (DOCUMENT STYLE) ---
 function handleDownloadPdf() {
     if (!currentRoadmap) return;
     
     // Show a visual indicator
     el('pdf-generating-overlay').classList.remove('hidden');
 
-    // 1. Generate a CLEAN HTML structure specifically for printing
-    // We don't use the screen DOM. We create a fresh report.
+    // 1. Generate a CLEAN, WHITE-BACKGROUND HTML structure
+    // This creates a string of HTML that looks like a Word Document, unrelated to your screen UI.
     const date = new Date().toLocaleDateString();
     
     let pdfContent = `
@@ -402,7 +400,7 @@ function handleDownloadPdf() {
             </div>
     `;
 
-    // Loop through milestones for clean list format
+    // Loop through milestones for clean document list format
     currentRoadmap.milestones.forEach((phase, idx) => {
         pdfContent += `
             <div style="margin-bottom: 30px; page-break-inside: avoid;">
@@ -410,30 +408,26 @@ function handleDownloadPdf() {
                     <span style="background: #14b8a6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 14px; margin-right: 8px;">Phase ${idx + 1}</span> 
                     ${phase.title}
                 </h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <ul style="list-style: none; padding: 0;">
         `;
         
         phase.skills.forEach(skill => {
             const statusColor = skill.status === 'completed' ? '#f59e0b' : '#94a3b8';
-            const statusText = skill.status === 'completed' ? '✓ Done' : '○ To Do';
+            const statusText = skill.status === 'completed' ? '✓ Complete' : '○ To Do';
             
             pdfContent += `
-                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px;">
+                <li style="margin-bottom: 15px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
                         <strong style="font-size: 14px; color: #334155;">${skill.title}</strong>
-                        <span style="font-size: 10px; color: ${statusColor}; font-weight: bold; border: 1px solid ${statusColor}; padding: 2px 4px; border-radius: 4px;">${statusText}</span>
+                        <span style="font-size: 10px; color: ${statusColor}; font-weight: bold; border: 1px solid ${statusColor}; padding: 2px 6px; border-radius: 4px;">${statusText}</span>
                     </div>
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">${skill.description.substring(0, 80)}...</div>
-                    <div style="font-size: 10px; color: #475569;">
-                        <strong>Salary:</strong> ${skill.salary_pkr} <br>
-                        <strong>Growth:</strong> ${createStars(skill.future_growth_rating)}
-                    </div>
-                </div>
+                    <div style="font-size: 12px; color: #64748b;">${skill.description}</div>
+                </li>
             `;
         });
         
         pdfContent += `
-                </div>
+                </ul>
             </div>
         `;
     });
@@ -445,19 +439,22 @@ function handleDownloadPdf() {
         </div>
     `;
 
+    // Insert this clean HTML into the invisible PDF container
     const container = el('pdf-container');
     container.innerHTML = pdfContent;
 
+    // Configure html2pdf to print THAT specific container
     const opt = {
-        margin: 0,
-        filename: `Smart_Raasta_Roadmap.pdf`,
+        margin: 10,
+        filename: `Smart_Raasta_${currentRoadmap.name.replace(/\s+/g, '_')}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     html2pdf().from(container).set(opt).save().then(() => {
-        container.innerHTML = ''; // Clean up
+        // Cleanup
+        container.innerHTML = ''; 
         el('pdf-generating-overlay').classList.add('hidden');
     });
 }
@@ -475,13 +472,11 @@ function setupEventListeners() {
     el('questionnaire-form').addEventListener('submit', handleFormSubmit);
     el('custom-alert-confirm-btn').onclick = hideCustomAlert;
     
-    // --- REFINED HEADER SCROLL LOGIC ---
     const appDiv = el('app');
     appDiv.addEventListener('scroll', () => {
         const currentY = appDiv.scrollTop;
         const header = el('main-header');
         
-        // Smooth Header Toggle
         if (currentY > lastScrollY && currentY > 50) {
             header.classList.add('hidden-header');
         } else {
@@ -500,7 +495,6 @@ function setupEventListeners() {
 
 function updateThemeIcon(isLight) {
     const btn = el('theme-toggle');
-    // Explicitly set innerHTML to ensure icon is present
     if(isLight) {
         btn.innerHTML = '<i class="fa-solid fa-sun text-yellow-500 text-xl"></i>';
     } else {

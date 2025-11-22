@@ -1,6 +1,5 @@
 /* --- CSS VARIABLES & THEME --- */
 :root {
-    /* Dark Mode (Default) */
     --bg-primary: #020617;
     --bg-secondary: #0f172a;
     --bg-tertiary: #1e293b;
@@ -11,14 +10,12 @@
     --accent-teal: #14b8a6;
     --accent-orange: #f59e0b;
     --accent-orange-glow: rgba(245, 158, 11, 0.4);
-    --accent-teal-glow: rgba(20, 184, 166, 0.3);
     
     --header-bg: rgba(2, 6, 23, 0.95);
     --shadow-color: rgba(0, 0, 0, 0.5);
 }
 
 html.light-mode {
-    /* Light Mode (High Contrast) */
     --bg-primary: #f0f4f8;
     --bg-secondary: #ffffff;
     --bg-tertiary: #e2e8f0;
@@ -45,9 +42,8 @@ body {
     overflow-x: hidden;
 }
 
-/* Global Transitions for elements */
 div, p, h1, h2, h3, button, input, select, header, .skill-card {
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* --- SCROLLBAR --- */
@@ -56,7 +52,7 @@ div, p, h1, h2, h3, button, input, select, header, .skill-card {
 ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
-/* --- HEADER TRANSITIONS --- */
+/* --- HEADER --- */
 #main-header {
     background-color: var(--header-bg);
     backdrop-filter: blur(12px);
@@ -95,7 +91,7 @@ div, p, h1, h2, h3, button, input, select, header, .skill-card {
     border: 1px solid transparent;
 }
 
-/* --- CARDS & COLOR LOGIC --- */
+/* --- CARDS --- */
 .skill-card {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
@@ -104,52 +100,24 @@ div, p, h1, h2, h3, button, input, select, header, .skill-card {
     z-index: 1;
     cursor: pointer;
 }
-
-/* GREEN TYPE: Incomplete (Active) Cards */
 .skill-card:not(.completed):hover {
-    transform: translateY(-6px);
-    border-color: var(--accent-teal); /* Green/Teal Border */
-    box-shadow: 0 12px 30px -5px var(--accent-teal-glow); /* Green/Teal Glow */
+    transform: translateY(-4px);
+    border-color: var(--accent-teal);
+    box-shadow: 0 10px 25px -5px rgba(20, 184, 166, 0.15);
 }
-.skill-card:not(.completed) .view-details-text {
-    color: var(--accent-teal);
-}
-
-/* ORANGE TYPE: Completed Cards */
 .skill-card.completed {
-    border-color: var(--accent-orange) !important; /* Orange Border */
+    border-color: var(--accent-orange) !important;
     background: linear-gradient(to bottom right, rgba(245, 158, 11, 0.08), transparent);
 }
 .skill-card.completed:hover {
     transform: translateY(-4px);
-    box-shadow: 0 0 20px var(--accent-orange-glow); /* Orange Glow */
+    box-shadow: 0 0 15px var(--accent-orange-glow);
 }
-.skill-card.completed .view-details-text {
-    color: var(--accent-orange);
-}
-
-/* --- PULSING DOTS --- */
-@keyframes pulseTeal {
-    0% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.7); }
-    70% { box-shadow: 0 0 0 6px rgba(20, 184, 166, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0); }
-}
-
-.status-dot-teal {
-    background-color: var(--accent-teal);
-    animation: pulseTeal 2s infinite;
-}
-.status-dot-orange {
-    background-color: var(--accent-orange);
-    box-shadow: 0 0 8px var(--accent-orange); 
-}
-
 
 /* --- MODALS --- */
 .modal-overlay {
     background-color: rgba(0, 0, 0, 0.9) !important; 
     backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
     z-index: 100;
     transition: opacity 0.3s ease;
 }
@@ -162,13 +130,13 @@ div, p, h1, h2, h3, button, input, select, header, .skill-card {
 .modal-content h3, .modal-content h4 { color: var(--text-primary); }
 .modal-content p, .modal-content li { color: var(--text-secondary); }
 
-/* --- INITIAL ANIMATION --- */
+/* --- ANIMATIONS (SIMPLE) --- */
 @keyframes fadeInScaleUp {
     from { opacity: 0; transform: scale(0.98) translateY(10px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
 .animate-fade-in-scale-up { 
-    animation: fadeInScaleUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
+    animation: fadeInScaleUp 0.4s ease-out forwards; 
 }
 
 /* --- INPUTS --- */

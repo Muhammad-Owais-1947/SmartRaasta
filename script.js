@@ -23,9 +23,8 @@ let isCompletionPopupShown = false;
 let progressInterval = null;
 let loadingMessageInterval = null;
 let lastScrollY = 0;
-let scrollObserver = null; 
 let sessionExpirationTime = null;
-let isOtpSent = false; // New state for login flow
+let isOtpSent = false;
 
 const el = id => document.getElementById(id);
 
@@ -56,7 +55,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     setupEventListeners();
-    setupScrollObserver();
 });
 
 // --- BACKEND TIMER ---
@@ -79,23 +77,6 @@ function handleSessionExpiry() {
     el('session-expired-modal').classList.remove('hidden');
     el('app').classList.add('blur-sm', 'pointer-events-none'); 
     fetch(`${WORKER_URL}/logout`, { method: 'POST', credentials: 'include' });
-}
-
-// --- SCROLL ---
-function setupScrollObserver() {
-    const options = {
-        root: el('app'),
-        threshold: 0.01,
-        rootMargin: "50px"
-    };
-    scrollObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('is-visible');
-                scrollObserver.unobserve(entry.target);
-            }
-        });
-    }, options);
 }
 
 // --- AUTH ---
@@ -125,7 +106,7 @@ async function checkAuth() {
     } catch (e) { console.error("Auth check failed", e); }
 }
 
-// --- NEW LOGIN HANDLER (OTP) ---
+// --- OTP LOGIN ---
 async function handleLogin(e) {
     e.preventDefault();
     const emailInput = el('email-input');
@@ -151,13 +132,12 @@ async function handleLogin(e) {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to send code');
 
-            // UI Switch to OTP mode
             isOtpSent = true;
             el('step-email').classList.add('hidden');
             el('step-otp').classList.remove('hidden');
-            msg.textContent = `Code sent to ${emailVal}. Please enter it below.`;
+            msg.textContent = `Code sent to ${emailVal}. Check your inbox.`;
             btn.textContent = 'Verify Code';
-            emailInput.disabled = true; // Lock email
+            emailInput.disabled = true;
             otpInput.focus();
 
         } else {
@@ -176,7 +156,6 @@ async function handleLogin(e) {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Invalid code');
 
-            // Success!
             currentUserEmail = data.email;
             if (data.expiresAt) {
                 sessionExpirationTime = data.expiresAt;
@@ -186,8 +165,6 @@ async function handleLogin(e) {
             updateHeaderState();
             el('email-modal-overlay').classList.add('hidden');
             el('info-modal-overlay').classList.add('hidden');
-            
-            // Reset Login Modal State
             resetLoginModal();
 
             if (currentRoadmap) {
@@ -251,43 +228,38 @@ function updateHeaderState() {
     }
 }
 
-// --- NEW JSON DOWNLOAD & RESTORE ---
+// --- DOWNLOAD JSON ---
 function handleDownloadJson() {
     if (!currentRoadmap) return;
-    
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentRoadmap));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
     downloadAnchorNode.setAttribute("download", `roadmap_${currentUserEmail || 'guest'}.json`);
-    document.body.appendChild(downloadAnchorNode); // required for firefox
+    document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
-    
-    showCustomAlert("Downloaded!", "Save this .json file safely. You can upload it later to restore your progress.");
+    showCustomAlert("Downloaded!", "Save this file. Upload it later to restore progress.");
 }
 
 function handleRestore(e) {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = function(event) {
         try {
             const jsonObj = JSON.parse(event.target.result);
             if (!jsonObj.milestones) throw new Error("Invalid Roadmap File");
-            
             renderRoadmap(jsonObj);
             el('restore-modal-overlay').classList.add('hidden');
             el('questionnaire-container').classList.add('hidden');
-            
             if(currentUserEmail) {
                 saveRoadmapToCloud();
-                showCustomAlert("Restored!", "Your roadmap has been restored and saved to your account.");
+                showCustomAlert("Restored!", "Your roadmap has been restored and saved.");
             } else {
-                showCustomAlert("Restored!", "Roadmap loaded. Log in to save it permanently.");
+                showCustomAlert("Restored!", "Roadmap loaded. Log in to save it.");
             }
         } catch (err) {
-            showCustomAlert("Error", "Could not read file. Is it a valid JSON?");
+            showCustomAlert("Error", "Invalid JSON file.");
         }
     };
     reader.readAsText(file);
@@ -335,19 +307,20 @@ async function handleFormSubmit(e) {
 }
 
 // --- RENDER ---
+// REMOVED 'reveal-on-scroll' class to force visibility
 function renderRoadmap(data) {
     currentRoadmap = data;
     el('roadmap-content').classList.remove('hidden');
     
     let html = `
-        <div class="mb-10 text-center reveal-on-scroll">
+        <div class="mb-10 text-center animate-fade-in-scale-up">
             <h1 class="text-3xl md:text-4xl font-bold mb-3" style="color: var(--text-primary)">${data.name}</h1>
             <p class="text-lg max-w-3xl mx-auto" style="color: var(--text-secondary)">${data.summary}</p>
         </div>
     `;
 
     html += `
-        <div class="mb-10 reveal-on-scroll">
+        <div class="mb-10 animate-fade-in-scale-up">
             <div class="progress-floating-bar rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 backdrop-blur-md">
                 <div class="w-full md:flex-1">
                     <div class="flex justify-between text-xs font-bold tracking-wider mb-2" style="color: var(--text-secondary)">
@@ -362,7 +335,6 @@ function renderRoadmap(data) {
                     <button id="regenerate-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
                         <i class="fa-solid fa-rotate-right"></i> New
                     </button>
-                    <!-- NEW JSON DOWNLOAD BUTTON -->
                     <button id="download-json-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
                         <i class="fa-solid fa-download"></i> Data
                     </button>
@@ -374,7 +346,7 @@ function renderRoadmap(data) {
     html += `<div class="max-w-6xl mx-auto space-y-12 pb-20">`;
     data.milestones.forEach((phase, index) => {
         html += `
-            <div class="reveal-on-scroll">
+            <div class="animate-fade-in-scale-up">
                 <div class="flex items-center gap-3 mb-6 border-b pb-2" style="border-color: var(--border-color)">
                     <div class="w-8 h-8 rounded-full bg-teal-500/10 text-teal-500 flex items-center justify-center font-bold text-sm border border-teal-500/20">${index + 1}</div>
                     <h2 class="text-xl font-bold" style="color: var(--text-primary)">${phase.title}</h2>
@@ -402,12 +374,10 @@ function renderRoadmap(data) {
     html += '</div>';
     
     el('roadmap-grid-container').innerHTML = html;
-    
     el('regenerate-btn-inner').addEventListener('click', () => {
         el('roadmap-content').classList.add('hidden'); 
         el('questionnaire-container').classList.remove('hidden'); 
     });
-    // Attach new download handler
     el('download-json-btn-inner').addEventListener('click', handleDownloadJson);
     
     document.querySelectorAll('.skill-card').forEach(card => {
@@ -415,67 +385,9 @@ function renderRoadmap(data) {
     });
 
     updateProgress();
-    
-    // FORCE VISIBILITY
-    if (scrollObserver) {
-        document.querySelectorAll('.reveal-on-scroll').forEach(el => scrollObserver.observe(el));
-    }
-    setTimeout(() => {
-        document.querySelectorAll('.reveal-on-scroll').forEach(el => {
-            el.classList.add('is-visible');
-            el.style.opacity = '1';
-            el.style.transform = 'none';
-        });
-    }, 200);
 }
 
-// --- SETUP ---
-function setupEventListeners() {
-    el('login-btn-header').onclick = () => el('email-modal-overlay').classList.remove('hidden');
-    el('logout-btn').onclick = handleLogout;
-    el('info-login-btn').onclick = () => { el('info-modal-overlay').classList.add('hidden'); el('email-modal-overlay').classList.remove('hidden'); };
-    el('info-close-btn').onclick = () => el('info-modal-overlay').classList.add('hidden');
-    el('email-cancel-btn').onclick = () => {
-        el('email-modal-overlay').classList.add('hidden');
-        resetLoginModal();
-    };
-    el('modal-close-btn').onclick = () => el('skill-modal-overlay').classList.add('hidden');
-    el('completion-close-btn').onclick = () => el('completion-modal-overlay').classList.add('hidden');
-    
-    // Restore Modal
-    el('open-restore-btn').onclick = () => el('restore-modal-overlay').classList.remove('hidden');
-    el('restore-cancel-btn').onclick = () => el('restore-modal-overlay').classList.add('hidden');
-    el('restore-file-input').addEventListener('change', handleRestore);
-
-    el('warning-dismiss-btn').onclick = () => el('session-warning-modal').classList.add('hidden');
-
-    el('login-form').addEventListener('submit', handleLogin);
-    el('questionnaire-form').addEventListener('submit', handleFormSubmit);
-    el('custom-alert-confirm-btn').onclick = hideCustomAlert;
-    
-    const appDiv = el('app');
-    appDiv.addEventListener('scroll', () => {
-        const currentY = appDiv.scrollTop;
-        const header = el('main-header');
-        if (currentY > lastScrollY && currentY > 50) header.classList.add('hidden-header');
-        else header.classList.remove('hidden-header');
-        lastScrollY = currentY;
-    });
-    el('theme-toggle').onclick = () => {
-        const root = document.documentElement;
-        const isLight = root.classList.toggle('light-mode');
-        localStorage.setItem('theme', isLight ? 'light' : 'dark');
-        updateThemeIcon(isLight);
-    };
-}
-
-function updateThemeIcon(isLight) {
-    const btn = el('theme-toggle');
-    if(isLight) btn.innerHTML = '<i class="fa-solid fa-sun text-yellow-500 text-xl"></i>';
-    else btn.innerHTML = '<i class="fa-solid fa-moon text-gray-400 text-xl"></i>';
-}
-
-// ... [Remaining helpers: createStars, showLoadingWithProgress, hideLoadingOverlay, etc. unchanged] ...
+// ... [Rest of helpers unchanged] ...
 function createStars(n) { return '★'.repeat(Math.floor(n)) + (n % 1 ? '½' : '') + '☆'.repeat(5 - Math.ceil(n)); }
 function showLoadingWithProgress() {
     el('api-loading-overlay').classList.remove('hidden');

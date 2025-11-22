@@ -29,15 +29,16 @@ let isOtpSent = false;
 
 const el = id => document.getElementById(id);
 
-// --- 1. HELPER FUNCTIONS (DEFINED FIRST) ---
+// --- 1. HELPER FUNCTIONS (DEFINED FIRST TO PREVENT ERRORS) ---
 
 function updateThemeIcon(isLight) {
     const btn = el('theme-toggle');
+    if (!btn) return;
     if(isLight) btn.innerHTML = '<i class="fa-solid fa-sun text-yellow-500 text-xl"></i>';
     else btn.innerHTML = '<i class="fa-solid fa-moon text-gray-400 text-xl"></i>';
 }
 
-function createStars(n) { return '★'.repeat(Math.floor(n)) + (n % 1 ? '½' : '') + '☆'.repeat(5 - Math.ceil(n)); }
+function createStars(n) { return '★'.repeat(Math.floor(n || 0)) + ((n || 0) % 1 ? '½' : '') + '☆'.repeat(5 - Math.ceil(n || 0)); }
 
 function showLoadingWithProgress() {
     el('api-loading-overlay').classList.remove('hidden');
@@ -71,8 +72,8 @@ function showCustomAlert(title, msg) {
 function hideCustomAlert() { el('custom-alert-overlay').classList.add('hidden'); }
 
 function updateProgress() {
-    if(!currentRoadmap) return;
-    const all = currentRoadmap.milestones.flatMap(m => m.skills);
+    if(!currentRoadmap || !currentRoadmap.milestones) return;
+    const all = currentRoadmap.milestones.flatMap(m => m.skills || []);
     const done = all.filter(s => s.status === 'completed');
     const pct = all.length > 0 ? Math.round((done.length / all.length) * 100) : 0;
     
@@ -83,7 +84,8 @@ function updateProgress() {
              bar.className = 'h-full transition-all duration-500 bg-gradient-to-r from-teal-500 to-teal-400'; 
         }
     }
-    if(el('progress-text')) el('progress-text').textContent = `${pct}%`;
+    const txt = el('progress-text');
+    if(txt) txt.textContent = `${pct}%`;
 
     if(pct === 100 && !isCompletionPopupShown) {
         el('completion-modal-overlay').classList.remove('hidden');
@@ -92,10 +94,10 @@ function updateProgress() {
 }
 
 function openSkillModal(id) {
-    if(!currentRoadmap) return;
+    if(!currentRoadmap || !currentRoadmap.milestones) return;
     let skill = null;
     currentRoadmap.milestones.forEach(m => {
-        const found = m.skills.find(s => s.id === id);
+        const found = (m.skills || []).find(s => s.id === id);
         if(found) skill = found;
     });
     if(!skill) return;
@@ -114,7 +116,7 @@ function openSkillModal(id) {
         </div>
     `;
 
-    el('modal-resources').innerHTML = skill.resources.map(r => 
+    el('modal-resources').innerHTML = (skill.resources || []).map(r => 
         `<li class="flex items-center justify-between p-2 rounded hover:bg-gray-700/10 transition-colors">
             <span style="color: var(--text-primary)">${r.name}</span>
             <a href="${r.url}" target="_blank" class="text-teal-500 hover:text-orange-500 transition-colors"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
@@ -137,7 +139,7 @@ function openSkillModal(id) {
 
 function toggleSkillComplete(id) {
     currentRoadmap.milestones.forEach(m => {
-        const s = m.skills.find(sk => sk.id === id);
+        const s = (m.skills || []).find(sk => sk.id === id);
         if(s) s.status = s.status === 'completed' ? 'incomplete' : 'completed';
     });
     el('skill-modal-overlay').classList.add('hidden');
@@ -146,6 +148,13 @@ function toggleSkillComplete(id) {
 }
 
 function renderRoadmap(data) {
+    // SAFEGUARD: If data is broken, stop here instead of crashing
+    if (!data || !data.milestones || !Array.isArray(data.milestones)) {
+        console.error("Invalid data structure received:", data);
+        showCustomAlert("Error", "Received incomplete data. Please regenerate.");
+        return;
+    }
+
     currentRoadmap = data;
     el('roadmap-content').classList.remove('hidden');
     
@@ -181,7 +190,11 @@ function renderRoadmap(data) {
     `;
 
     html += `<div class="max-w-6xl mx-auto space-y-12 pb-20">`;
+    
     data.milestones.forEach((phase, index) => {
+        // DEFENSIVE CODING: Use empty array if skills are missing
+        const skills = phase.skills || []; 
+        
         html += `
             <div class="animate-fade-in-scale-up">
                 <div class="flex items-center gap-3 mb-6 border-b pb-2" style="border-color: var(--border-color)">
@@ -189,7 +202,7 @@ function renderRoadmap(data) {
                     <h2 class="text-xl font-bold" style="color: var(--text-primary)">${phase.title}</h2>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    ${phase.skills.map((skill) => {
+                    ${skills.map((skill) => {
                         const isCompleted = skill.status === 'completed';
                         const iconClass = isCompleted ? 'fa-circle-check text-orange-500' : 'fa-circle text-gray-600';
                         const dotClass = isCompleted ? 'status-dot-orange' : 'status-dot-teal';
@@ -211,11 +224,16 @@ function renderRoadmap(data) {
     html += '</div>';
     
     el('roadmap-grid-container').innerHTML = html;
-    el('regenerate-btn-inner').addEventListener('click', () => {
+    
+    // Re-attach listeners to new elements
+    const regenBtn = el('regenerate-btn-inner');
+    if (regenBtn) regenBtn.addEventListener('click', () => {
         el('roadmap-content').classList.add('hidden'); 
         el('questionnaire-container').classList.remove('hidden'); 
     });
-    el('download-json-btn-inner').addEventListener('click', handleDownloadJson);
+    
+    const dlBtn = el('download-json-btn-inner');
+    if (dlBtn) dlBtn.addEventListener('click', handleDownloadJson);
     
     document.querySelectorAll('.skill-card').forEach(card => {
         card.addEventListener('click', () => openSkillModal(card.dataset.id));
@@ -470,7 +488,9 @@ async function handleFormSubmit(e) {
         if (!res.ok) throw new Error('Generation failed');
 
         const roadmap = await res.json();
-        if (!roadmap.milestones) throw new Error("Invalid response");
+        
+        // Guard against null/bad structure
+        if (!roadmap || !roadmap.milestones) throw new Error("Invalid response structure");
         
         recordGeneration();
         renderRoadmap(roadmap);
@@ -523,7 +543,7 @@ function setupEventListeners() {
     };
 }
 
-// --- 2. MAIN LOGIC (AT THE BOTTOM TO ENSURE FUNCTIONS ARE READY) ---
+// --- 2. MAIN LOGIC (BOTTOM) ---
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Theme Init
@@ -539,7 +559,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(ls) ls.classList.add('opacity-0', 'pointer-events-none');
     }, 800);
 
-    // Only call checkAuth after everything is defined
     await checkAuth();
     
     if(sessionExpirationTime) {

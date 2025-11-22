@@ -42,12 +42,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(ls) ls.classList.add('opacity-0', 'pointer-events-none');
     }, 800);
 
+    // Check auth immediately on load
     await checkAuth();
     
+    // Start timer if we have a session
     if(sessionExpirationTime) {
         startSessionTimer();
     }
 
+    // Show welcome modal ONLY if guest and not visited before
     if (!currentUserEmail && !localStorage.getItem('visitedBefore')) {
         setTimeout(() => {
             el('info-modal-overlay').classList.remove('hidden');
@@ -102,12 +105,16 @@ function setupScrollObserver() {
     }, options);
 }
 
-// --- AUTH ---
+// --- AUTH CHECK (Crucial Fix) ---
 async function checkAuth() {
     try {
+        // IMPORTANT: credentials: 'include' sends the HttpOnly cookie to the worker
         const res = await fetch(`${WORKER_URL}/load`, { method: 'GET', credentials: 'include' });
+        
         if (res.ok) {
             const data = await res.json();
+            console.log("Session found:", data.email);
+            
             currentUserEmail = data.email;
             
             if (data.expiresAt) {
@@ -115,19 +122,26 @@ async function checkAuth() {
             }
 
             updateHeaderState();
-            if (data.data && data.data.milestones) {
-                renderRoadmap(data.data);
-                el('questionnaire-container').classList.add('hidden');
+            
+            // Load saved roadmap if it exists
+            if (data.data && (data.data.milestones || data.data.roadmap)) {
+                // Handle different data structures (direct milestones vs nested roadmap)
+                const roadmapData = data.data.milestones ? data.data : (data.data.roadmap || null);
+                
+                if (roadmapData) {
+                    renderRoadmap(roadmapData);
+                    el('questionnaire-container').classList.add('hidden');
+                }
             }
-        } else if (res.status === 401) {
-            // Handle 401 gracefully
-            console.log("Session invalid or expired.");
+        } else {
+            // If 401, we are just a guest, do nothing special
+            console.log("No active session (Guest Mode)");
             currentUserEmail = null;
             sessionExpirationTime = null;
             updateHeaderState();
         }
     } catch (e) { 
-        console.log("Guest mode check failed"); 
+        console.error("Auth check failed:", e); 
     }
 }
 
@@ -167,6 +181,7 @@ async function handleLogin(e) {
             await saveRoadmapToCloud();
             showCustomAlert("Success", "Your roadmap has been saved!");
         } else {
+            // Reload session data just in case
             await checkAuth();
         }
 

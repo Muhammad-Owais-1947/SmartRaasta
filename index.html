@@ -12,9 +12,6 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- HTML2PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -82,15 +79,6 @@
         </div>
     </div>
 
-    <!-- PDF GENERATING OVERLAY (Z-INDEX 200) -->
-    <div id="pdf-generating-overlay" class="hidden fixed inset-0 z-[200] flex items-center justify-center modal-overlay backdrop-blur-xl bg-black/80">
-        <div class="text-center text-white">
-            <div class="text-4xl mb-4 animate-bounce">📄</div>
-            <h3 class="text-2xl font-bold mb-2">Generating Report...</h3>
-            <p class="text-gray-400">Formatting document for print.</p>
-        </div>
-    </div>
-
     <!-- SESSION WARNING MODAL (10 min warning) -->
     <div id="session-warning-modal" class="hidden fixed top-24 right-6 z-[200] animate-fade-in-scale-up">
         <div class="bg-yellow-900/90 border-l-4 border-yellow-500 text-white p-5 rounded-lg shadow-2xl max-w-sm backdrop-blur-md">
@@ -98,9 +86,8 @@
                 <div class="text-yellow-400 text-xl mt-1"><i class="fa-solid fa-clock"></i></div>
                 <div>
                     <h3 class="font-bold text-sm uppercase tracking-wide mb-1 text-yellow-400">Session Warning</h3>
-                    <p class="text-xs text-gray-200 mb-4 leading-relaxed">Your secure session expires in 10 minutes. Download your roadmap now to save your progress.</p>
+                    <p class="text-xs text-gray-200 mb-4 leading-relaxed">Your secure session expires in 10 minutes.</p>
                     <div class="flex gap-2">
-                        <button id="warning-download-btn" class="text-xs bg-white text-yellow-900 font-bold px-4 py-2 rounded hover:bg-gray-100 transition-colors">Download PDF</button>
                         <button id="warning-dismiss-btn" class="text-xs border border-white/30 hover:bg-white/10 text-white px-3 py-2 rounded transition-colors">Dismiss</button>
                     </div>
                 </div>
@@ -194,12 +181,6 @@
         <div id="roadmap-content" class="hidden pb-20">
             <div id="roadmap-grid-container"></div>
         </div>
-
-        <!-- 
-           FIX: Positioned off-screen (top: -10000px) but NOT display:none.
-           This ensures html2pdf can "see" it to render the PDF.
-        -->
-        <div id="pdf-container" style="position: fixed; top: -10000px; left: 0; width: 800px; background: white; color: black; z-index: 1000; opacity: 1;"></div>
 
     </div>
 

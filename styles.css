@@ -12,35 +12,42 @@
     --accent-orange: #f59e0b;
     --accent-orange-glow: rgba(245, 158, 11, 0.4);
     
-    --header-bg: rgba(2, 6, 23, 0.95); /* More opaque for better readability */
+    --header-bg: rgba(2, 6, 23, 0.95);
     --shadow-color: rgba(0, 0, 0, 0.5);
 }
 
 html.light-mode {
     /* Light Mode (High Contrast) */
-    --bg-primary: #f8fafc;
+    --bg-primary: #f0f4f8; /* Slightly darker white for better contrast */
     --bg-secondary: #ffffff;
-    --bg-tertiary: #ffffff;
+    --bg-tertiary: #e2e8f0;
     --text-primary: #0f172a;
     --text-secondary: #475569;
     --border-color: #cbd5e1;
     
-    --header-bg: rgba(255, 255, 255, 0.95);
+    --header-bg: rgba(255, 255, 255, 0.98);
     --shadow-color: rgba(148, 163, 184, 0.2);
 }
 
-/* --- GLOBAL SMOOTH TRANSITION --- */
-body, div, p, h1, h2, h3, button, input, select, header, .skill-card {
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+/* --- GLOBAL SETTINGS --- */
+html {
+    scroll-behavior: smooth;
 }
 
-/* --- GENERAL LAYOUT --- */
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    background-image: radial-gradient(circle at 50% 0%, rgba(20, 184, 166, 0.05), transparent 70%);
+    /* Subtle background pattern */
+    background-image: radial-gradient(circle at 50% 0%, rgba(20, 184, 166, 0.08), transparent 70%);
     background-attachment: fixed;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    overflow-x: hidden;
+}
+
+/* Global Transitions for elements */
+div, p, h1, h2, h3, button, input, select, header, .skill-card {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* --- SCROLLBAR --- */
@@ -49,24 +56,25 @@ body {
 ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
-/* --- HEADER (Fixed at Top) --- */
+/* --- HEADER --- */
 #main-header {
     background-color: var(--header-bg);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border-color);
-    z-index: 50; /* Top layer for navigation */
-    transition: transform 0.3s ease;
+    z-index: 50;
+    transition: transform 0.3s ease, background-color 0.3s ease;
 }
 #main-header.hidden-header { transform: translateY(-100%); }
 
-/* --- PROGRESS HEADER (FLOATING BAR) --- */
+/* --- PROGRESS BAR (FIXED: NON-STICKY) --- */
+/* Changed from sticky/fixed to relative so it doesn't overlap content */
 .progress-floating-bar {
     background-color: var(--bg-tertiary);
     border: 1px solid var(--border-color);
-    box-shadow: 0 10px 25px -5px var(--shadow-color);
-    z-index: 40; /* Below header, above content */
-    position: sticky;
-    top: 80px; /* Height of header + slight gap */
+    box-shadow: 0 4px 20px -5px var(--shadow-color);
+    position: relative; /* Fixes the overlapping issue */
+    margin-bottom: 2rem;
+    z-index: 10; 
 }
 
 /* --- BUTTONS --- */
@@ -75,7 +83,7 @@ body {
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
 }
-.btn-action:hover, .btn-primary:hover, #regenerate-btn:hover, #download-pdf-btn:hover {
+.btn-action:hover, .btn-primary:hover {
     border-color: var(--accent-orange) !important;
     color: var(--text-primary) !important;
     box-shadow: 0 0 12px var(--accent-orange-glow) !important;
@@ -93,12 +101,13 @@ body {
     border: 1px solid var(--border-color);
     position: relative;
     overflow: hidden;
-    z-index: 10;
+    z-index: 1;
+    cursor: pointer;
 }
 .skill-card:not(.completed):hover {
     transform: translateY(-4px);
     border-color: var(--accent-teal);
-    box-shadow: 0 10px 20px -10px rgba(20, 184, 166, 0.2);
+    box-shadow: 0 10px 25px -5px rgba(20, 184, 166, 0.15);
 }
 .skill-card.completed {
     border-color: var(--accent-orange) !important;
@@ -109,16 +118,28 @@ body {
     box-shadow: 0 0 15px var(--accent-orange-glow);
 }
 
-/* --- MODALS (High Contrast Overlay) --- */
+/* --- MODALS (IMPROVED VISIBILITY) --- */
 .modal-overlay {
-    background-color: rgba(0, 0, 0, 0.85) !important; /* Darker background for better focus */
-    backdrop-filter: blur(8px);
-    z-index: 100; /* Topmost */
+    /* Much darker background for better readability of the popup */
+    background-color: rgba(0, 0, 0, 0.9) !important; 
+    backdrop-filter: blur(10px); /* Strong blur effect */
+    -webkit-backdrop-filter: blur(10px); /* Safari support */
+    z-index: 100;
+    transition: opacity 0.3s ease;
 }
+
 .modal-content {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    /* Strong shadow to separate from background */
+    box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.8); 
+}
+/* Ensure text inside modal is always readable */
+.modal-content h3, .modal-content h4 {
+    color: var(--text-primary);
+}
+.modal-content p, .modal-content li {
+    color: var(--text-secondary);
 }
 
 /* --- ANIMATIONS --- */
@@ -126,11 +147,17 @@ body {
     from { opacity: 0; transform: scale(0.98) translateY(10px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
-.animate-fade-in-scale-up { animation: fadeInScaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-fade-in-scale-up { 
+    animation: fadeInScaleUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
+}
 
 /* --- INPUTS --- */
 input, select {
     background-color: var(--bg-secondary) !important;
     color: var(--text-primary) !important;
     border-color: var(--border-color) !important;
+}
+input:focus, select:focus {
+    border-color: var(--accent-teal) !important;
+    outline: none;
 }

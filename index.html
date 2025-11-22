@@ -142,10 +142,16 @@
                                 </select>
                             </div>
                         </div>
-                        <button type="submit" id="generate-btn" class="w-full btn-primary py-4 rounded-xl font-bold text-lg mt-4 flex items-center justify-center gap-2 group transition-all">
-                            <span>Generate Roadmap</span>
-                            <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
-                        </button>
+                        <div class="flex flex-col gap-3 mt-4">
+                            <button type="submit" id="generate-btn" class="w-full btn-primary py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 group transition-all">
+                                <span>Generate Roadmap</span>
+                                <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                            </button>
+                            <!-- NEW RESTORE BUTTON -->
+                            <button type="button" id="open-restore-btn" class="w-full py-3 rounded-xl font-medium text-sm border border-dashed hover:bg-gray-700/10 transition-all" style="border-color: var(--border-color); color: var(--text-secondary);">
+                                <i class="fa-solid fa-upload mr-2"></i> Restore Progress from Backup
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -159,7 +165,7 @@
 
     <!-- MODALS -->
     
-    <!-- Login Modal -->
+    <!-- LOGIN / OTP MODAL -->
     <div id="email-modal-overlay" class="hidden fixed inset-0 z-[80] flex items-center justify-center modal-overlay p-4">
         <div class="modal-content rounded-2xl p-8 w-full max-w-sm text-center animate-fade-in-scale-up">
             <div class="w-14 h-14 bg-teal-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-teal-500 text-2xl">
@@ -167,13 +173,34 @@
             </div>
             <h3 class="text-xl font-bold mb-2" style="color: var(--text-primary);">Login Securely</h3>
             <p id="login-msg" class="text-sm mb-6" style="color: var(--text-secondary);">Enter email to receive a login code.</p>
-            <form id="login-form">
-                <input type="email" id="email-input" class="w-full rounded-lg p-3 mb-4 text-center border outline-none" placeholder="name@example.com" required>
+            
+            <form id="login-form" class="space-y-4">
+                <!-- Step 1: Email -->
+                <div id="step-email">
+                    <input type="email" id="email-input" class="w-full rounded-lg p-3 text-center border outline-none" placeholder="name@example.com" required>
+                </div>
+                <!-- Step 2: OTP (Hidden initially) -->
+                <div id="step-otp" class="hidden">
+                    <input type="text" id="otp-input" class="w-full rounded-lg p-3 text-center border outline-none text-xl tracking-widest font-mono" placeholder="123456" maxlength="6">
+                </div>
+
                 <div class="flex gap-3">
                     <button type="button" id="email-cancel-btn" class="flex-1 py-2 rounded-lg border hover:bg-gray-700/10 transition-colors" style="border-color: var(--border-color); color: var(--text-secondary);">Cancel</button>
                     <button type="submit" id="login-submit-btn" class="flex-1 py-2 rounded-lg btn-primary font-bold">Send Code</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- RESTORE MODAL -->
+    <div id="restore-modal-overlay" class="hidden fixed inset-0 z-[85] flex items-center justify-center modal-overlay p-4">
+        <div class="modal-content rounded-2xl p-8 w-full max-w-sm text-center animate-fade-in-scale-up">
+            <h3 class="text-xl font-bold mb-2" style="color: var(--text-primary);">Restore Progress</h3>
+            <p class="text-sm mb-6" style="color: var(--text-secondary);">Upload the <code>.json</code> file you downloaded previously.</p>
+            <input type="file" id="restore-file-input" accept=".json" class="mb-4 w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"/>
+            <div class="flex gap-3 justify-center">
+                <button id="restore-cancel-btn" class="px-4 py-2 rounded border text-sm">Cancel</button>
+            </div>
         </div>
     </div>
 

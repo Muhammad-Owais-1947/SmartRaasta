@@ -36,21 +36,37 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
+    /* Subtle pattern overlay */
     background-image: radial-gradient(circle at 50% 0%, rgba(20, 184, 166, 0.08), transparent 70%);
     background-attachment: fixed;
     transition: background-color 0.3s ease, color 0.3s ease;
     overflow-x: hidden;
 }
 
-div, p, h1, h2, h3, button, input, select, header, .skill-card {
+/* Utility class for theme borders */
+.border-theme {
+    border-color: var(--border-color) !important;
+}
+
+/* Utility classes for backgrounds */
+.bg-secondary { background-color: var(--bg-secondary); }
+.bg-tertiary { background-color: var(--bg-tertiary); }
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+
+div, p, h1, h2, h3, h4, button, input, select, header, .skill-card, span, i {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* --- SCROLLBAR --- */
-::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #475569; border-radius: 5px; border: 2px solid var(--bg-primary); }
 ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* Custom scrollbar for inside modals */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border: none; }
 
 /* --- HEADER --- */
 #main-header {
@@ -65,30 +81,33 @@ div, p, h1, h2, h3, button, input, select, header, .skill-card {
 
 /* --- PROGRESS BAR --- */
 .progress-floating-bar {
-    background-color: var(--bg-tertiary);
+    background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    box-shadow: 0 4px 20px -5px var(--shadow-color);
+    box-shadow: 0 10px 30px -10px var(--shadow-color);
     position: relative;
-    margin-bottom: 2rem;
     z-index: 10; 
 }
 
 /* --- BUTTONS --- */
 .btn-action {
-    background-color: transparent;
+    background-color: var(--bg-tertiary);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
+    transition: all 0.2s ease;
 }
 .btn-action:hover, .btn-primary:hover {
     border-color: var(--accent-orange) !important;
     color: var(--text-primary) !important;
-    box-shadow: 0 0 12px var(--accent-orange-glow) !important;
-    transform: translateY(-1px);
+    box-shadow: 0 0 20px var(--accent-orange-glow) !important;
+    transform: translateY(-2px);
 }
 .btn-primary {
     background: linear-gradient(135deg, var(--accent-teal), #0d9488);
     color: white;
     border: 1px solid transparent;
+}
+.btn-primary:active {
+    transform: translateY(0);
 }
 
 /* --- CARDS --- */
@@ -99,25 +118,30 @@ div, p, h1, h2, h3, button, input, select, header, .skill-card {
     overflow: hidden;
     z-index: 1;
     cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .skill-card:not(.completed):hover {
-    transform: translateY(-4px);
+    transform: translateY(-6px);
     border-color: var(--accent-teal);
-    box-shadow: 0 10px 25px -5px rgba(20, 184, 166, 0.15);
+    box-shadow: 0 15px 30px -5px rgba(20, 184, 166, 0.15);
 }
+.skill-card:not(.completed):hover h3 {
+    color: var(--accent-teal);
+}
+
 .skill-card.completed {
     border-color: var(--accent-orange) !important;
-    background: linear-gradient(to bottom right, rgba(245, 158, 11, 0.08), transparent);
+    background: linear-gradient(to bottom right, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.02));
 }
 .skill-card.completed:hover {
     transform: translateY(-4px);
-    box-shadow: 0 0 15px var(--accent-orange-glow);
+    box-shadow: 0 0 25px var(--accent-orange-glow);
 }
 
 /* --- MODALS --- */
 .modal-overlay {
-    background-color: rgba(0, 0, 0, 0.9) !important; 
-    backdrop-filter: blur(10px);
+    background-color: rgba(0, 0, 0, 0.75) !important; 
+    backdrop-filter: blur(12px); /* Stronger blur */
     z-index: 100;
     transition: opacity 0.3s ease;
 }
@@ -125,27 +149,40 @@ div, p, h1, h2, h3, button, input, select, header, .skill-card {
 .modal-content {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.8); 
+    box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.9); 
 }
 .modal-content h3, .modal-content h4 { color: var(--text-primary); }
 .modal-content p, .modal-content li { color: var(--text-secondary); }
 
-/* --- ANIMATIONS (SIMPLE) --- */
+/* --- ANIMATIONS --- */
 @keyframes fadeInScaleUp {
-    from { opacity: 0; transform: scale(0.98) translateY(10px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
+    0% { opacity: 0; transform: scale(0.95) translateY(15px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 .animate-fade-in-scale-up { 
-    animation: fadeInScaleUp 0.4s ease-out forwards; 
+    animation: fadeInScaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
+}
+
+@keyframes bounceSlow {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+.animate-bounce-slow {
+    animation: bounceSlow 2s infinite;
 }
 
 /* --- INPUTS --- */
 input, select {
-    background-color: var(--bg-secondary) !important;
     color: var(--text-primary) !important;
-    border-color: var(--border-color) !important;
 }
-input:focus, select:focus {
-    border-color: var(--accent-teal) !important;
-    outline: none;
+input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+/* --- RESPONSIVE TYPOGRAPHY ADJUSTMENTS --- */
+@media (max-width: 640px) {
+    .text-4xl { font-size: 2rem; }
+    .text-5xl { font-size: 2.5rem; }
+    .p-10, .p-12, .p-14 { padding: 1.5rem; }
 }

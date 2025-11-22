@@ -88,8 +88,8 @@ function handleSessionExpiry() {
 function setupScrollObserver() {
     const options = {
         root: el('app'),
-        threshold: 0.1,
-        rootMargin: "0px 0px -50px 0px"
+        threshold: 0.05, // Lowered threshold for better detection
+        rootMargin: "0px 0px 0px 0px"
     };
 
     scrollObserver = new IntersectionObserver((entries) => {
@@ -112,19 +112,13 @@ async function checkAuth() {
             console.log("Session found for:", data.email);
             
             currentUserEmail = data.email;
-            
-            if (data.expiresAt) {
-                sessionExpirationTime = data.expiresAt;
-            }
+            if (data.expiresAt) sessionExpirationTime = data.expiresAt;
 
             updateHeaderState();
             
-            // CRITICAL: Check if roadmap data exists and render it
-            // The worker now returns data directly in `data.data`
+            // Load saved roadmap if it exists
             if (data.data && Object.keys(data.data).length > 0) {
                 console.log("Rendering saved roadmap...");
-                
-                // Handle if data is wrapped or direct
                 let roadmap = data.data;
                 if (roadmap.roadmap) roadmap = roadmap.roadmap; 
                 if (roadmap.career_roadmap) roadmap = roadmap.career_roadmap;
@@ -177,12 +171,10 @@ async function handleLogin(e) {
         el('email-modal-overlay').classList.add('hidden');
         el('info-modal-overlay').classList.add('hidden');
 
-        // If user has generated a roadmap BEFORE logging in, save it now
         if (currentRoadmap) {
             await saveRoadmapToCloud();
             showCustomAlert("Success", "Your roadmap has been saved!");
         } else {
-            // Otherwise, try to load existing data
             await checkAuth();
         }
 
@@ -363,9 +355,19 @@ function renderRoadmap(data) {
 
     updateProgress();
     
+    // FIX: Force visibility immediately if observer fails or lags
     if (scrollObserver) {
         document.querySelectorAll('.reveal-on-scroll').forEach(el => scrollObserver.observe(el));
     }
+    
+    // SAFETY FALLBACK: Make everything visible after 100ms just in case
+    setTimeout(() => {
+        document.querySelectorAll('.reveal-on-scroll').forEach(el => {
+            el.classList.add('is-visible');
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+        });
+    }, 100);
 }
 
 function openSkillModal(id) {

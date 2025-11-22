@@ -23,13 +23,12 @@ let isCompletionPopupShown = false;
 let progressInterval = null;
 let loadingMessageInterval = null;
 let lastScrollY = 0;
-let scrollObserver = null; 
 let sessionExpirationTime = null;
 let isOtpSent = false;
 
 const el = id => document.getElementById(id);
 
-// --- 1. HELPER FUNCTIONS (DEFINED FIRST TO PREVENT ERRORS) ---
+// --- 1. HELPER FUNCTIONS ---
 
 function updateThemeIcon(isLight) {
     const btn = el('theme-toggle');
@@ -116,12 +115,17 @@ function openSkillModal(id) {
         </div>
     `;
 
-    el('modal-resources').innerHTML = (skill.resources || []).map(r => 
-        `<li class="flex items-center justify-between p-2 rounded hover:bg-gray-700/10 transition-colors">
-            <span style="color: var(--text-primary)">${r.name}</span>
-            <a href="${r.url}" target="_blank" class="text-teal-500 hover:text-orange-500 transition-colors"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
-        </li>`
-    ).join('');
+    const resources = skill.resources || [];
+    if(resources.length > 0) {
+        el('modal-resources').innerHTML = resources.map(r => 
+            `<li class="flex items-center justify-between p-2 rounded hover:bg-gray-700/10 transition-colors">
+                <span style="color: var(--text-primary)">${r.name}</span>
+                <a href="${r.url}" target="_blank" class="text-teal-500 hover:text-orange-500 transition-colors"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+            </li>`
+        ).join('');
+    } else {
+        el('modal-resources').innerHTML = '<li class="text-sm text-gray-500">No specific resources provided.</li>';
+    }
 
     const btn = el('modal-complete-btn');
     btn.onclick = () => toggleSkillComplete(skill.id);
@@ -147,11 +151,11 @@ function toggleSkillComplete(id) {
     if(currentUserEmail) saveRoadmapToCloud();
 }
 
+// --- RENDER FUNCTION ---
 function renderRoadmap(data) {
-    // SAFEGUARD: If data is broken, stop here instead of crashing
     if (!data || !data.milestones || !Array.isArray(data.milestones)) {
         console.error("Invalid data structure received:", data);
-        showCustomAlert("Error", "Received incomplete data. Please regenerate.");
+        showCustomAlert("Error", "Received incomplete data. Please try generating again.");
         return;
     }
 
@@ -192,7 +196,7 @@ function renderRoadmap(data) {
     html += `<div class="max-w-6xl mx-auto space-y-12 pb-20">`;
     
     data.milestones.forEach((phase, index) => {
-        // DEFENSIVE CODING: Use empty array if skills are missing
+        // Defensive: Ensure skills array exists
         const skills = phase.skills || []; 
         
         html += `
@@ -202,38 +206,46 @@ function renderRoadmap(data) {
                     <h2 class="text-xl font-bold" style="color: var(--text-primary)">${phase.title}</h2>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    ${skills.map((skill) => {
-                        const isCompleted = skill.status === 'completed';
-                        const iconClass = isCompleted ? 'fa-circle-check text-orange-500' : 'fa-circle text-gray-600';
-                        const dotClass = isCompleted ? 'status-dot-orange' : 'status-dot-teal';
-                        return `
-                        <div class="skill-card p-5 rounded-xl cursor-pointer flex flex-col justify-between group ${isCompleted ? 'completed' : ''}" data-id="${skill.id}">
-                            <div class="flex justify-between items-start mb-4">
-                                <h3 class="font-semibold text-sm pr-2 group-hover:text-teal-500 transition-colors" style="color: var(--text-primary)">${skill.title}</h3>
-                                <i class="fa-regular ${iconClass} text-sm transition-colors"></i>
-                            </div>
-                            <div class="flex justify-between items-end">
-                                <span class="view-details-text text-[10px] uppercase tracking-wider font-bold opacity-0 group-hover:opacity-100 transition-opacity">View Details</span>
-                                <div class="status-dot w-2 h-2 rounded-full ${dotClass}"></div>
-                            </div>
-                        </div>`;
-                    }).join('')}
-                </div>
+        `;
+
+        if (skills.length === 0) {
+            html += `<p class="text-gray-500 italic col-span-full">No specific skills listed for this phase.</p>`;
+        } else {
+            skills.forEach((skill) => {
+                const isCompleted = skill.status === 'completed';
+                const iconClass = isCompleted ? 'fa-circle-check text-orange-500' : 'fa-circle text-gray-600';
+                const dotClass = isCompleted ? 'status-dot-orange' : 'status-dot-teal';
+                
+                html += `
+                <div class="skill-card p-5 rounded-xl cursor-pointer flex flex-col justify-between group ${isCompleted ? 'completed' : ''}" data-id="${skill.id}">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="font-semibold text-sm pr-2 group-hover:text-teal-500 transition-colors" style="color: var(--text-primary)">${skill.title}</h3>
+                        <i class="fa-regular ${iconClass} text-sm transition-colors"></i>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <span class="view-details-text text-[10px] uppercase tracking-wider font-bold opacity-0 group-hover:opacity-100 transition-opacity">View Details</span>
+                        <div class="status-dot w-2 h-2 rounded-full ${dotClass}"></div>
+                    </div>
+                </div>`;
+            });
+        }
+
+        html += `   </div>
             </div>`;
     });
     html += '</div>';
     
     el('roadmap-grid-container').innerHTML = html;
     
-    // Re-attach listeners to new elements
+    // Re-attach listeners
     const regenBtn = el('regenerate-btn-inner');
-    if (regenBtn) regenBtn.addEventListener('click', () => {
+    if(regenBtn) regenBtn.addEventListener('click', () => {
         el('roadmap-content').classList.add('hidden'); 
         el('questionnaire-container').classList.remove('hidden'); 
     });
     
     const dlBtn = el('download-json-btn-inner');
-    if (dlBtn) dlBtn.addEventListener('click', handleDownloadJson);
+    if(dlBtn) dlBtn.addEventListener('click', handleDownloadJson);
     
     document.querySelectorAll('.skill-card').forEach(card => {
         card.addEventListener('click', () => openSkillModal(card.dataset.id));
@@ -241,6 +253,8 @@ function renderRoadmap(data) {
 
     updateProgress();
 }
+
+// --- LOGIC FUNCTIONS ---
 
 function startSessionTimer() {
     if (!sessionExpirationTime) return;
@@ -261,22 +275,6 @@ function handleSessionExpiry() {
     el('session-expired-modal').classList.remove('hidden');
     el('app').classList.add('blur-sm', 'pointer-events-none'); 
     fetch(`${WORKER_URL}/logout`, { method: 'POST', credentials: 'include' });
-}
-
-function setupScrollObserver() {
-    const options = {
-        root: el('app'),
-        threshold: 0.01,
-        rootMargin: "50px"
-    };
-    scrollObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('is-visible');
-                scrollObserver.unobserve(entry.target);
-            }
-        });
-    }, options);
 }
 
 async function checkAuth() {
@@ -488,8 +486,7 @@ async function handleFormSubmit(e) {
         if (!res.ok) throw new Error('Generation failed');
 
         const roadmap = await res.json();
-        
-        // Guard against null/bad structure
+        // Guard against bad data
         if (!roadmap || !roadmap.milestones) throw new Error("Invalid response structure");
         
         recordGeneration();
@@ -543,10 +540,8 @@ function setupEventListeners() {
     };
 }
 
-// --- 2. MAIN LOGIC (BOTTOM) ---
-
+// --- MAIN (BOTTOM) ---
 document.addEventListener('DOMContentLoaded', async () => {
-    // Theme Init
     if (localStorage.getItem('theme') === 'light') {
         document.documentElement.classList.add('light-mode');
         updateThemeIcon(true);
@@ -573,5 +568,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     setupEventListeners();
-    setupScrollObserver();
 });

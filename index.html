@@ -82,7 +82,7 @@
         </div>
     </div>
 
-    <!-- PDF GENERATING OVERLAY -->
+    <!-- PDF GENERATING OVERLAY (Z-INDEX 200) -->
     <div id="pdf-generating-overlay" class="hidden fixed inset-0 z-[200] flex items-center justify-center modal-overlay backdrop-blur-xl bg-black/80">
         <div class="text-center text-white">
             <div class="text-4xl mb-4 animate-bounce">📄</div>
@@ -196,12 +196,13 @@
         </div>
 
         <!-- 
-           CRITICAL PDF FIX: 
-           We place this div 'off-screen' but NOT with display:none or opacity:0.
-           We use fixed position far above the viewport. 
-           The inline styles here override all dark mode defaults.
+           PDF CONTAINER (Invisible start state)
+           Style Explanation:
+           - fixed/top/left: Positions it relative to window.
+           - z-index: -1 places it behind everything initially.
+           - display: none ensures it doesn't block clicks or view.
         -->
-        <div id="pdf-container" style="position: fixed; top: -10000px; left: 0; width: 800px; background: white; color: black; z-index: -1; pointer-events: none;"></div>
+        <div id="pdf-container" style="position: fixed; top: 0; left: 0; width: 800px; background: white; color: black; z-index: -1; display: none;"></div>
 
     </div>
 

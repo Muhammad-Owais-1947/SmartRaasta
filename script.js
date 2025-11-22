@@ -43,6 +43,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(ls) ls.classList.add('opacity-0', 'pointer-events-none');
     }, 800);
 
+    // Define setupEventListeners BEFORE calling it, or rely on hoisting.
+    // To be safe and clear, I will define it at the bottom but call it here.
+    setupEventListeners();
+
     await checkAuth();
     
     if(sessionExpirationTime) {
@@ -55,8 +59,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('visitedBefore', 'true');
         }, 1500);
     }
-
-    setupEventListeners();
+    
+    // Initialize Scroll Observer
+    setupScrollObserver();
 });
 
 // --- BACKEND TIMER ---
@@ -79,6 +84,23 @@ function handleSessionExpiry() {
     el('session-expired-modal').classList.remove('hidden');
     el('app').classList.add('blur-sm', 'pointer-events-none'); 
     fetch(`${WORKER_URL}/logout`, { method: 'POST', credentials: 'include' });
+}
+
+// --- SCROLL ---
+function setupScrollObserver() {
+    const options = {
+        root: el('app'),
+        threshold: 0.01,
+        rootMargin: "50px"
+    };
+    scrollObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                scrollObserver.unobserve(entry.target);
+            }
+        });
+    }, options);
 }
 
 // --- AUTH ---
@@ -313,6 +335,7 @@ function renderRoadmap(data) {
     currentRoadmap = data;
     el('roadmap-content').classList.remove('hidden');
     
+    // IMPORTANT: Removed 'reveal-on-scroll' class from these elements to ensure visibility
     let html = `
         <div class="mb-10 text-center animate-fade-in-scale-up">
             <h1 class="text-3xl md:text-4xl font-bold mb-3" style="color: var(--text-primary)">${data.name}</h1>
@@ -386,9 +409,11 @@ function renderRoadmap(data) {
     });
 
     updateProgress();
+    
+    // No longer relying on reveal-on-scroll, content should be visible immediately via animate-fade-in-scale-up
 }
 
-// --- SETUP & HELPERS (The Missing Part) ---
+// --- SETUP & HELPERS (THIS WAS MISSING IN PREVIOUS VERSION) ---
 function setupEventListeners() {
     el('login-btn-header').onclick = () => el('email-modal-overlay').classList.remove('hidden');
     el('logout-btn').onclick = handleLogout;

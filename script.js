@@ -42,15 +42,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(ls) ls.classList.add('opacity-0', 'pointer-events-none');
     }, 800);
 
-    // Check auth immediately on load
     await checkAuth();
     
-    // Start timer if we have a session
     if(sessionExpirationTime) {
         startSessionTimer();
     }
 
-    // Show welcome modal ONLY if guest and not visited before
     if (!currentUserEmail && !localStorage.getItem('visitedBefore')) {
         setTimeout(() => {
             el('info-modal-overlay').classList.remove('hidden');
@@ -105,15 +102,14 @@ function setupScrollObserver() {
     }, options);
 }
 
-// --- AUTH CHECK (Crucial Fix) ---
+// --- AUTH & DATA LOAD ---
 async function checkAuth() {
     try {
-        // IMPORTANT: credentials: 'include' sends the HttpOnly cookie to the worker
         const res = await fetch(`${WORKER_URL}/load`, { method: 'GET', credentials: 'include' });
         
         if (res.ok) {
             const data = await res.json();
-            console.log("Session found:", data.email);
+            console.log("Session found for:", data.email);
             
             currentUserEmail = data.email;
             
@@ -123,19 +119,23 @@ async function checkAuth() {
 
             updateHeaderState();
             
-            // Load saved roadmap if it exists
-            if (data.data && (data.data.milestones || data.data.roadmap)) {
-                // Handle different data structures (direct milestones vs nested roadmap)
-                const roadmapData = data.data.milestones ? data.data : (data.data.roadmap || null);
+            // CRITICAL: Check if roadmap data exists and render it
+            // The worker now returns data directly in `data.data`
+            if (data.data && Object.keys(data.data).length > 0) {
+                console.log("Rendering saved roadmap...");
                 
-                if (roadmapData) {
-                    renderRoadmap(roadmapData);
+                // Handle if data is wrapped or direct
+                let roadmap = data.data;
+                if (roadmap.roadmap) roadmap = roadmap.roadmap; 
+                if (roadmap.career_roadmap) roadmap = roadmap.career_roadmap;
+
+                if (roadmap.milestones) {
+                    renderRoadmap(roadmap);
                     el('questionnaire-container').classList.add('hidden');
                 }
             }
         } else {
-            // If 401, we are just a guest, do nothing special
-            console.log("No active session (Guest Mode)");
+            console.log("Guest mode (No active session)");
             currentUserEmail = null;
             sessionExpirationTime = null;
             updateHeaderState();
@@ -177,11 +177,12 @@ async function handleLogin(e) {
         el('email-modal-overlay').classList.add('hidden');
         el('info-modal-overlay').classList.add('hidden');
 
+        // If user has generated a roadmap BEFORE logging in, save it now
         if (currentRoadmap) {
             await saveRoadmapToCloud();
             showCustomAlert("Success", "Your roadmap has been saved!");
         } else {
-            // Reload session data just in case
+            // Otherwise, try to load existing data
             await checkAuth();
         }
 

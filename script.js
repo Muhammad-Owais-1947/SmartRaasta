@@ -4,16 +4,16 @@ var SESSION_DURATION = 60 * 60 * 1000;
 var WARNING_TIME = 50 * 60 * 1000; 
 
 var animatedLoadingMessages = [
-    "Analyzing local job market trends...",
+    "Analyzing local job market trends in Pakistan...",
     "Consulting AI career strategists...",
-    "Mapping skills to opportunities...",
-    "Tailoring your personalized path...",
-    "Identifying key growth areas...",
-    "Compiling relevant resources...",
-    "Forecasting salary expectations...",
-    "Structuring your milestones...",
-    "Finalizing your career blueprint...",
-    "Almost there, preparing your Raasta..."
+    "Mapping skills to high-demand opportunities...",
+    "Tailoring your personalized growth path...",
+    "Identifying key salary benchmarks...",
+    "Compiling relevant learning resources...",
+    "Forecasting future growth potential...",
+    "Structuring your milestones for success...",
+    "Finalizing your customized Career Raasta...",
+    "Almost there, polishing your roadmap..."
 ];
 
 // --- STATE ---
@@ -34,7 +34,7 @@ const el = id => document.getElementById(id);
 function updateThemeIcon(isLight) {
     const btn = el('theme-toggle');
     if (!btn) return;
-    if(isLight) btn.innerHTML = '<i class="fa-solid fa-sun text-yellow-500 text-xl"></i>';
+    if(isLight) btn.innerHTML = '<i class="fa-solid fa-sun text-yellow-500 text-2xl"></i>';
     else btn.innerHTML = '<i class="fa-solid fa-moon text-gray-400 text-xl"></i>';
 }
 
@@ -60,7 +60,7 @@ function showLoadingWithProgress() {
     loadingMessageInterval = setInterval(() => { 
         i = (i + 1) % animatedLoadingMessages.length; 
         if(msgContainer) msgContainer.textContent = animatedLoadingMessages[i]; 
-    }, 2000);
+    }, 2500);
 }
 
 function hideLoadingOverlay() {
@@ -138,13 +138,13 @@ function openSkillModal(id) {
     
     if(detailsEl) {
         detailsEl.innerHTML = `
-            <div class="p-3 rounded-lg border" style="background-color: var(--bg-primary); border-color: var(--border-color)">
-                <div class="text-xs uppercase mb-1" style="color: var(--text-secondary)">Est. Salary</div>
-                <div class="font-bold" style="color: var(--text-primary)">${skill.salary_pkr}</div>
+            <div class="p-4 rounded-2xl border flex flex-col justify-center" style="background-color: var(--bg-primary); border-color: var(--border-color)">
+                <div class="text-xs font-bold uppercase mb-2 tracking-wide" style="color: var(--text-secondary)">Est. Salary (PKR)</div>
+                <div class="font-bold text-xl text-teal-400">${skill.salary_pkr}</div>
             </div>
-            <div class="p-3 rounded-lg border" style="background-color: var(--bg-primary); border-color: var(--border-color)">
-                <div class="text-xs uppercase mb-1" style="color: var(--text-secondary)">Demand</div>
-                <div class="text-yellow-400 text-sm">${createStars(skill.future_growth_rating)}</div>
+            <div class="p-4 rounded-2xl border flex flex-col justify-center" style="background-color: var(--bg-primary); border-color: var(--border-color)">
+                <div class="text-xs font-bold uppercase mb-2 tracking-wide" style="color: var(--text-secondary)">Market Demand</div>
+                <div class="text-yellow-400 text-xl tracking-widest">${createStars(skill.future_growth_rating)}</div>
             </div>
         `;
     }
@@ -152,21 +152,23 @@ function openSkillModal(id) {
     if(resourcesEl) {
         const resources = skill.resources || [];
         resourcesEl.innerHTML = resources.length > 0 ? resources.map(r => 
-            `<li class="flex items-center justify-between p-2 rounded hover:bg-gray-700/10 transition-colors">
-                <span style="color: var(--text-primary)">${r.name}</span>
-                <a href="${r.url}" target="_blank" class="text-teal-500 hover:text-orange-500 transition-colors"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+            `<li class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-700/10 transition-colors group border border-transparent hover:border-gray-700/30">
+                <span class="font-medium" style="color: var(--text-primary)">${r.name}</span>
+                <a href="${r.url}" target="_blank" class="text-teal-500 hover:text-orange-500 transition-colors p-2 bg-teal-500/10 rounded-lg group-hover:bg-teal-500/20">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </a>
             </li>`
-        ).join('') : '<li class="text-sm text-gray-500">No resources available</li>';
+        ).join('') : '<li class="text-base text-gray-500 italic">No specific resources available.</li>';
     }
 
     if(completeBtn) {
         completeBtn.onclick = () => toggleSkillComplete(skill.id);
         if(skill.status === 'completed') {
             completeBtn.textContent = 'Mark as Incomplete';
-            completeBtn.className = 'w-full py-3 rounded-lg font-bold border-2 border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white transition-all';
+            completeBtn.className = 'w-full py-4 rounded-xl font-bold border-2 border-orange-500 text-orange-500 hover:bg-orange-500/10 transition-all text-lg';
         } else {
             completeBtn.textContent = 'Mark as Completed';
-            completeBtn.className = 'w-full py-3 rounded-lg font-bold btn-primary hover:shadow-lg transition-all';
+            completeBtn.className = 'w-full py-4 rounded-xl font-bold btn-primary hover:shadow-xl transition-all text-lg';
         }
     }
 
@@ -199,68 +201,77 @@ function renderRoadmap(data) {
 
     content.classList.remove('hidden');
     
+    // Header Section of Roadmap
     let html = `
-        <div class="mb-10 text-center animate-fade-in-scale-up">
-            <h1 class="text-3xl md:text-4xl font-bold mb-3" style="color: var(--text-primary)">${data.name}</h1>
-            <p class="text-lg max-w-3xl mx-auto" style="color: var(--text-secondary)">${data.summary}</p>
+        <div class="mb-16 text-center animate-fade-in-scale-up">
+            <div class="inline-block px-4 py-1 rounded-full bg-teal-500/10 text-teal-400 text-sm font-bold mb-4 border border-teal-500/20">CAREER PATH</div>
+            <h1 class="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight" style="color: var(--text-primary)">${data.name}</h1>
+            <p class="text-xl max-w-4xl mx-auto leading-relaxed" style="color: var(--text-secondary)">${data.summary}</p>
         </div>
     `;
 
+    // Sticky Progress Bar
     html += `
-        <div class="mb-10 animate-fade-in-scale-up">
-            <div class="progress-floating-bar rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 backdrop-blur-md">
+        <div class="mb-16 animate-fade-in-scale-up sticky top-24 z-40 px-2">
+            <div class="progress-floating-bar rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl bg-opacity-90">
                 <div class="w-full md:flex-1">
-                    <div class="flex justify-between text-xs font-bold tracking-wider mb-2" style="color: var(--text-secondary)">
+                    <div class="flex justify-between text-xs font-bold tracking-wider mb-3" style="color: var(--text-secondary)">
                         <span>YOUR PROGRESS</span>
-                        <span id="progress-text" style="color: var(--accent-teal)">0%</span>
+                        <span id="progress-text" class="text-lg" style="color: var(--accent-teal)">0%</span>
                     </div>
-                    <div class="w-full h-2.5 rounded-full bg-gray-700 overflow-hidden">
-                        <div id="progress-bar-inner" class="h-full bg-teal-500 transition-all duration-500 shadow-[0_0_10px_rgba(20,184,166,0.5)]" style="width: 0%"></div>
+                    <div class="w-full h-3 rounded-full bg-gray-700/50 overflow-hidden">
+                        <div id="progress-bar-inner" class="h-full bg-teal-500 transition-all duration-700 shadow-[0_0_15px_rgba(20,184,166,0.6)]" style="width: 0%"></div>
                     </div>
                 </div>
                 <div class="flex gap-3 w-full md:w-auto justify-end">
-                    <button id="regenerate-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-rotate-right"></i> New
+                    <button id="regenerate-btn-inner" class="btn-action px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-right"></i> New Path
                     </button>
-                    <button id="download-json-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-download"></i> Data
+                    <button id="download-json-btn-inner" class="btn-action px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-download"></i> Save Data
                     </button>
                 </div>
             </div>
         </div>
     `;
 
-    html += `<div class="max-w-6xl mx-auto space-y-12 pb-20">`;
+    html += `<div class="max-w-7xl mx-auto space-y-16 pb-20">`;
     
     data.milestones.forEach((phase, index) => {
         const skills = phase.skills || []; 
         
         html += `
             <div class="animate-fade-in-scale-up">
-                <div class="flex items-center gap-3 mb-6 border-b pb-2" style="border-color: var(--border-color)">
-                    <div class="w-8 h-8 rounded-full bg-teal-500/10 text-teal-500 flex items-center justify-center font-bold text-sm border border-teal-500/20">${index + 1}</div>
-                    <h2 class="text-xl font-bold" style="color: var(--text-primary)">${phase.title}</h2>
+                <div class="flex items-center gap-4 mb-8 border-b border-gray-700/50 pb-4">
+                    <div class="w-12 h-12 rounded-2xl bg-teal-500/10 text-teal-500 flex items-center justify-center font-bold text-xl border border-teal-500/20 shadow-lg">${index + 1}</div>
+                    <h2 class="text-3xl font-bold tracking-tight" style="color: var(--text-primary)">${phase.title}</h2>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         `;
 
         if (skills.length === 0) {
-            html += `<p class="text-gray-500 italic col-span-full">No specific skills listed for this phase.</p>`;
+            html += `<p class="text-gray-500 italic col-span-full text-lg p-4">No specific skills listed for this phase.</p>`;
         } else {
             skills.forEach((skill) => {
                 const isCompleted = skill.status === 'completed';
-                const iconClass = isCompleted ? 'fa-circle-check text-orange-500' : 'fa-circle text-gray-600';
-                const dotClass = isCompleted ? 'status-dot-orange' : 'status-dot-teal';
+                const iconClass = isCompleted ? 'fa-solid fa-circle-check text-orange-500' : 'fa-regular fa-circle text-gray-500';
+                const cardBgClass = isCompleted ? 'completed' : '';
                 
                 html += `
-                <div class="skill-card p-5 rounded-xl cursor-pointer flex flex-col justify-between group ${isCompleted ? 'completed' : ''}" data-id="${skill.id}">
-                    <div class="flex justify-between items-start mb-4">
-                        <h3 class="font-semibold text-sm pr-2 group-hover:text-teal-500 transition-colors" style="color: var(--text-primary)">${skill.title}</h3>
-                        <i class="fa-regular ${iconClass} text-sm transition-colors"></i>
+                <div class="skill-card p-6 rounded-2xl cursor-pointer flex flex-col justify-between group min-h-[180px] ${cardBgClass}" data-id="${skill.id}">
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-2 rounded-lg bg-gray-700/20 group-hover:bg-teal-500/20 transition-colors">
+                                <i class="fa-solid fa-cube text-gray-400 group-hover:text-teal-500 transition-colors"></i>
+                            </div>
+                            <i class="${iconClass} text-xl transition-all duration-300 transform group-hover:scale-110"></i>
+                        </div>
+                        <h3 class="font-bold text-lg pr-2 group-hover:text-teal-400 transition-colors leading-snug" style="color: var(--text-primary)">${skill.title}</h3>
                     </div>
-                    <div class="flex justify-between items-end">
-                        <span class="view-details-text text-[10px] uppercase tracking-wider font-bold opacity-0 group-hover:opacity-100 transition-opacity">View Details</span>
-                        <div class="status-dot w-2 h-2 rounded-full ${dotClass}"></div>
+                    <div class="flex justify-between items-end mt-4">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-teal-500 transition-colors flex items-center gap-1">
+                            Explore <i class="fa-solid fa-arrow-right opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 transform duration-300"></i>
+                        </span>
                     </div>
                 </div>`;
             });
@@ -278,6 +289,7 @@ function renderRoadmap(data) {
     if(regenBtn) regenBtn.addEventListener('click', () => {
         el('roadmap-content').classList.add('hidden'); 
         el('questionnaire-container').classList.remove('hidden'); 
+        window.scrollTo(0,0);
     });
     
     const dlBtn = el('download-json-btn-inner');
@@ -297,7 +309,7 @@ function startSessionTimer() {
     const timerInterval = setInterval(() => {
         const now = Date.now();
         const timeLeft = sessionExpirationTime - now;
-        if (timeLeft <= 600000 && timeLeft > 599000) {
+        if (timeLeft <= 600000 && timeLeft > 599000) { // 10 mins
             const modal = el('session-warning-modal');
             if(modal) modal.classList.remove('hidden');
         }
@@ -312,7 +324,7 @@ function handleSessionExpiry() {
     const modal = el('session-expired-modal');
     const app = el('app');
     if(modal) modal.classList.remove('hidden');
-    if(app) app.classList.add('blur-sm', 'pointer-events-none'); 
+    if(app) app.classList.add('blur-md', 'pointer-events-none'); 
     fetch(`${WORKER_URL}/logout`, { method: 'POST', credentials: 'include' });
 }
 
@@ -360,7 +372,7 @@ async function handleLogin(e) {
 
     try {
         if (!isOtpSent) {
-            btn.textContent = 'Sending Code...';
+            btn.textContent = 'Sending...';
             const res = await fetch(`${WORKER_URL}/send-otp`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -437,7 +449,7 @@ function resetLoginModal() {
     if(stepOtp) stepOtp.classList.add('hidden');
     if(emailInput) emailInput.disabled = false;
     if(otpInput) otpInput.value = '';
-    if(msg) msg.textContent = "Enter email to receive a login code.";
+    if(msg) msg.textContent = "Enter your email to receive a one-time verification code.";
     if(btn) btn.textContent = "Send Code";
 }
 
@@ -489,7 +501,7 @@ function handleDownloadJson() {
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
-    showCustomAlert("Downloaded!", "Save this file. Upload it later to restore progress.");
+    showCustomAlert("Downloaded!", "File saved. You can restore it later.");
 }
 
 function handleRestore(e) {
@@ -510,7 +522,7 @@ function handleRestore(e) {
                 saveRoadmapToCloud();
                 showCustomAlert("Restored!", "Your roadmap has been restored and saved.");
             } else {
-                showCustomAlert("Restored!", "Roadmap loaded. Log in to save it.");
+                showCustomAlert("Restored!", "Roadmap loaded. Log in to save it permanently.");
             }
         } catch (err) {
             showCustomAlert("Error", "Invalid JSON file.");
@@ -542,7 +554,7 @@ async function handleFormSubmit(e) {
             credentials: 'include'
         });
 
-        if (!res.ok) throw new Error('Generation failed');
+        if (!res.ok) throw new Error('Generation failed. Please try again.');
 
         const roadmap = await res.json();
         if (!roadmap || !roadmap.milestones) throw new Error("Invalid response structure");

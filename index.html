@@ -196,13 +196,10 @@
         </div>
 
         <!-- 
-           PDF CONTAINER (Invisible start state)
-           Style Explanation:
-           - fixed/top/left: Positions it relative to window.
-           - z-index: -1 places it behind everything initially.
-           - display: none ensures it doesn't block clicks or view.
+           FIX: Positioned off-screen (top: -10000px) but NOT display:none.
+           This ensures html2pdf can "see" it to render the PDF.
         -->
-        <div id="pdf-container" style="position: fixed; top: 0; left: 0; width: 800px; background: white; color: black; z-index: -1; display: none;"></div>
+        <div id="pdf-container" style="position: fixed; top: -10000px; left: 0; width: 800px; background: white; color: black; z-index: 1000; opacity: 1;"></div>
 
     </div>
 

@@ -24,29 +24,41 @@ let progressInterval = null;
 let loadingMessageInterval = null;
 let lastScrollY = 0;
 let scrollObserver = null; 
-let sessionExpirationTime = null;
-let isOtpSent = false;
+let sessionExpirationTime = null; 
 
 const el = id => document.getElementById(id);
 
-// --- 1. HELPER FUNCTIONS ---
+// --- HELPER FUNCTIONS (Defined First) ---
 
 function updateThemeIcon(isLight) {
     const btn = el('theme-toggle');
     if (!btn) return;
-    if(isLight) btn.innerHTML = '<i class="fa-solid fa-sun text-yellow-500 text-xl"></i>';
-    else btn.innerHTML = '<i class="fa-solid fa-moon text-gray-400 text-xl"></i>';
+    if (isLight) {
+        btn.innerHTML = '<i class="fa-solid fa-sun text-yellow-500 text-xl"></i>';
+    } else {
+        btn.innerHTML = '<i class="fa-solid fa-moon text-gray-400 text-xl"></i>';
+    }
 }
 
-function createStars(n) { return '★'.repeat(Math.floor(n || 0)) + ((n || 0) % 1 ? '½' : '') + '☆'.repeat(5 - Math.ceil(n || 0)); }
+function createStars(n) {
+    return '★'.repeat(Math.floor(n || 0)) + ((n || 0) % 1 ? '½' : '') + '☆'.repeat(5 - Math.ceil(n || 0));
+}
 
 function showLoadingWithProgress() {
     el('api-loading-overlay').classList.remove('hidden');
     let w = 0;
-    progressInterval = setInterval(() => { if(w < 95) w += Math.random() * 2; el('api-loading-progress-bar').style.width = `${w}%`; el('api-loading-progress-text').textContent = `${Math.round(w)}%`; }, 100);
+    progressInterval = setInterval(() => {
+        if (w < 95) w += Math.random() * 2;
+        el('api-loading-progress-bar').style.width = `${w}%`;
+        el('api-loading-progress-text').textContent = `${Math.round(w)}%`;
+    }, 100);
+    
     el('loading-message-container').textContent = animatedLoadingMessages[0];
     let i = 0;
-    loadingMessageInterval = setInterval(() => { i = (i + 1) % animatedLoadingMessages.length; el('loading-message-container').textContent = animatedLoadingMessages[i]; }, 2000);
+    loadingMessageInterval = setInterval(() => {
+        i = (i + 1) % animatedLoadingMessages.length;
+        el('loading-message-container').textContent = animatedLoadingMessages[i];
+    }, 2000);
 }
 
 function hideLoadingOverlay() {
@@ -56,215 +68,82 @@ function hideLoadingOverlay() {
     setTimeout(() => el('api-loading-overlay').classList.add('hidden'), 400);
 }
 
-function recordGeneration() {
-    if (sessionStorage.getItem('isAdmin')) return;
-    const ts = JSON.parse(localStorage.getItem('generationTimestamps') || '[]');
-    ts.push(Date.now());
-    localStorage.setItem('generationTimestamps', JSON.stringify(ts));
+function showCustomAlert(title, msg) {
+    el('custom-alert-title').textContent = title;
+    el('custom-alert-message').textContent = msg;
+    el('custom-alert-overlay').classList.remove('hidden');
 }
 
-function showCustomAlert(title, msg) { 
-    el('custom-alert-title').textContent = title; 
-    el('custom-alert-message').textContent = msg; 
-    el('custom-alert-overlay').classList.remove('hidden'); 
+function hideCustomAlert() {
+    el('custom-alert-overlay').classList.add('hidden');
 }
-
-function hideCustomAlert() { el('custom-alert-overlay').classList.add('hidden'); }
 
 function updateProgress() {
-    if(!currentRoadmap || !currentRoadmap.milestones) return;
+    if (!currentRoadmap || !currentRoadmap.milestones) return;
     const all = currentRoadmap.milestones.flatMap(m => m.skills || []);
     const done = all.filter(s => s.status === 'completed');
     const pct = all.length > 0 ? Math.round((done.length / all.length) * 100) : 0;
     
     const bar = el('progress-bar-inner');
-    if(bar) {
+    if (bar) {
         bar.style.width = `${pct}%`;
-        if(pct > 0) {
+        if (pct > 0) {
              bar.className = 'h-full transition-all duration-500 bg-gradient-to-r from-teal-500 to-teal-400'; 
         }
     }
     const txt = el('progress-text');
-    if(txt) txt.textContent = `${pct}%`;
+    if (txt) txt.textContent = `${pct}%`;
 
-    if(pct === 100 && !isCompletionPopupShown) {
+    if (pct === 100 && !isCompletionPopupShown) {
         el('completion-modal-overlay').classList.remove('hidden');
         isCompletionPopupShown = true;
     }
 }
 
-function openSkillModal(id) {
-    if(!currentRoadmap || !currentRoadmap.milestones) return;
-    let skill = null;
-    currentRoadmap.milestones.forEach(m => {
-        const found = (m.skills || []).find(s => s.id === id);
-        if(found) skill = found;
-    });
-    if(!skill) return;
+// --- MAIN LOGIC ---
 
-    el('modal-title').textContent = skill.title;
-    el('modal-description').textContent = skill.description;
-    
-    el('modal-details-grid').innerHTML = `
-        <div class="p-3 rounded-lg border" style="background-color: var(--bg-primary); border-color: var(--border-color)">
-            <div class="text-xs uppercase mb-1" style="color: var(--text-secondary)">Est. Salary</div>
-            <div class="font-bold" style="color: var(--text-primary)">${skill.salary_pkr}</div>
-        </div>
-        <div class="p-3 rounded-lg border" style="background-color: var(--bg-primary); border-color: var(--border-color)">
-            <div class="text-xs uppercase mb-1" style="color: var(--text-secondary)">Demand</div>
-            <div class="text-yellow-400 text-sm">${createStars(skill.future_growth_rating)}</div>
-        </div>
-    `;
-
-    const resources = skill.resources || [];
-    if(resources.length > 0) {
-        el('modal-resources').innerHTML = resources.map(r => 
-            `<li class="flex items-center justify-between p-2 rounded hover:bg-gray-700/10 transition-colors">
-                <span style="color: var(--text-primary)">${r.name}</span>
-                <a href="${r.url}" target="_blank" class="text-teal-500 hover:text-orange-500 transition-colors"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
-            </li>`
-        ).join('');
+document.addEventListener('DOMContentLoaded', async () => {
+    // Theme Init
+    if (localStorage.getItem('theme') === 'light') {
+        document.documentElement.classList.add('light-mode');
+        updateThemeIcon(true);
     } else {
-        el('modal-resources').innerHTML = '<li class="text-sm text-gray-500">No specific resources provided.</li>';
+        updateThemeIcon(false);
+    }
+    
+    setTimeout(() => {
+        const ls = el('loading-screen');
+        if(ls) ls.classList.add('opacity-0', 'pointer-events-none');
+    }, 800);
+
+    await checkAuth();
+    
+    if(sessionExpirationTime) {
+        startSessionTimer();
     }
 
-    const btn = el('modal-complete-btn');
-    btn.onclick = () => toggleSkillComplete(skill.id);
-    
-    if(skill.status === 'completed') {
-        btn.textContent = 'Mark as Incomplete';
-        btn.className = 'w-full py-3 rounded-lg font-bold border-2 border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white transition-all';
-    } else {
-        btn.textContent = 'Mark as Completed';
-        btn.className = 'w-full py-3 rounded-lg font-bold btn-primary hover:shadow-lg transition-all';
+    if (!currentUserEmail && !localStorage.getItem('visitedBefore')) {
+        setTimeout(() => {
+            el('info-modal-overlay').classList.remove('hidden');
+            localStorage.setItem('visitedBefore', 'true');
+        }, 1500);
     }
 
-    el('skill-modal-overlay').classList.remove('hidden');
-}
+    setupEventListeners();
+});
 
-function toggleSkillComplete(id) {
-    currentRoadmap.milestones.forEach(m => {
-        const s = (m.skills || []).find(sk => sk.id === id);
-        if(s) s.status = s.status === 'completed' ? 'incomplete' : 'completed';
-    });
-    el('skill-modal-overlay').classList.add('hidden');
-    renderRoadmap(currentRoadmap);
-    if(currentUserEmail) saveRoadmapToCloud();
-}
-
-// --- RENDER FUNCTION ---
-function renderRoadmap(data) {
-    if (!data || !data.milestones || !Array.isArray(data.milestones)) {
-        console.error("Invalid data structure received:", data);
-        showCustomAlert("Error", "Received incomplete data. Please try generating again.");
-        return;
-    }
-
-    currentRoadmap = data;
-    el('roadmap-content').classList.remove('hidden');
-    
-    let html = `
-        <div class="mb-10 text-center animate-fade-in-scale-up">
-            <h1 class="text-3xl md:text-4xl font-bold mb-3" style="color: var(--text-primary)">${data.name}</h1>
-            <p class="text-lg max-w-3xl mx-auto" style="color: var(--text-secondary)">${data.summary}</p>
-        </div>
-    `;
-
-    html += `
-        <div class="mb-10 animate-fade-in-scale-up">
-            <div class="progress-floating-bar rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 backdrop-blur-md">
-                <div class="w-full md:flex-1">
-                    <div class="flex justify-between text-xs font-bold tracking-wider mb-2" style="color: var(--text-secondary)">
-                        <span>YOUR PROGRESS</span>
-                        <span id="progress-text" style="color: var(--accent-teal)">0%</span>
-                    </div>
-                    <div class="w-full h-2.5 rounded-full bg-gray-700 overflow-hidden">
-                        <div id="progress-bar-inner" class="h-full bg-teal-500 transition-all duration-500 shadow-[0_0_10px_rgba(20,184,166,0.5)]" style="width: 0%"></div>
-                    </div>
-                </div>
-                <div class="flex gap-3 w-full md:w-auto justify-end">
-                    <button id="regenerate-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-rotate-right"></i> New
-                    </button>
-                    <button id="download-json-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-download"></i> Data
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    html += `<div class="max-w-6xl mx-auto space-y-12 pb-20">`;
-    
-    data.milestones.forEach((phase, index) => {
-        // Defensive: Ensure skills array exists
-        const skills = phase.skills || []; 
-        
-        html += `
-            <div class="animate-fade-in-scale-up">
-                <div class="flex items-center gap-3 mb-6 border-b pb-2" style="border-color: var(--border-color)">
-                    <div class="w-8 h-8 rounded-full bg-teal-500/10 text-teal-500 flex items-center justify-center font-bold text-sm border border-teal-500/20">${index + 1}</div>
-                    <h2 class="text-xl font-bold" style="color: var(--text-primary)">${phase.title}</h2>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        `;
-
-        if (skills.length === 0) {
-            html += `<p class="text-gray-500 italic col-span-full">No specific skills listed for this phase.</p>`;
-        } else {
-            skills.forEach((skill) => {
-                const isCompleted = skill.status === 'completed';
-                const iconClass = isCompleted ? 'fa-circle-check text-orange-500' : 'fa-circle text-gray-600';
-                const dotClass = isCompleted ? 'status-dot-orange' : 'status-dot-teal';
-                
-                html += `
-                <div class="skill-card p-5 rounded-xl cursor-pointer flex flex-col justify-between group ${isCompleted ? 'completed' : ''}" data-id="${skill.id}">
-                    <div class="flex justify-between items-start mb-4">
-                        <h3 class="font-semibold text-sm pr-2 group-hover:text-teal-500 transition-colors" style="color: var(--text-primary)">${skill.title}</h3>
-                        <i class="fa-regular ${iconClass} text-sm transition-colors"></i>
-                    </div>
-                    <div class="flex justify-between items-end">
-                        <span class="view-details-text text-[10px] uppercase tracking-wider font-bold opacity-0 group-hover:opacity-100 transition-opacity">View Details</span>
-                        <div class="status-dot w-2 h-2 rounded-full ${dotClass}"></div>
-                    </div>
-                </div>`;
-            });
-        }
-
-        html += `   </div>
-            </div>`;
-    });
-    html += '</div>';
-    
-    el('roadmap-grid-container').innerHTML = html;
-    
-    // Re-attach listeners
-    const regenBtn = el('regenerate-btn-inner');
-    if(regenBtn) regenBtn.addEventListener('click', () => {
-        el('roadmap-content').classList.add('hidden'); 
-        el('questionnaire-container').classList.remove('hidden'); 
-    });
-    
-    const dlBtn = el('download-json-btn-inner');
-    if(dlBtn) dlBtn.addEventListener('click', handleDownloadJson);
-    
-    document.querySelectorAll('.skill-card').forEach(card => {
-        card.addEventListener('click', () => openSkillModal(card.dataset.id));
-    });
-
-    updateProgress();
-}
-
-// --- LOGIC FUNCTIONS ---
-
+// --- SESSION LOGIC ---
 function startSessionTimer() {
     if (!sessionExpirationTime) return;
+
     const timerInterval = setInterval(() => {
         const now = Date.now();
         const timeLeft = sessionExpirationTime - now;
+
         if (timeLeft <= 600000 && timeLeft > 599000) {
             el('session-warning-modal').classList.remove('hidden');
         }
+
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
             handleSessionExpiry();
@@ -278,123 +157,90 @@ function handleSessionExpiry() {
     fetch(`${WORKER_URL}/logout`, { method: 'POST', credentials: 'include' });
 }
 
+// --- AUTH ---
 async function checkAuth() {
     try {
         const res = await fetch(`${WORKER_URL}/load`, { method: 'GET', credentials: 'include' });
-        const data = await res.json();
         
-        if (res.ok && data.success) {
-            console.log("Session found for:", data.email);
+        if (res.ok) {
+            const data = await res.json();
             currentUserEmail = data.email;
             if (data.expiresAt) sessionExpirationTime = data.expiresAt;
             updateHeaderState();
             
-            if (data.data && Object.keys(data.data).length > 0) {
+            // Robust Data Loading
+            if (data.data) {
                 let roadmap = data.data;
-                if (roadmap.roadmap) roadmap = roadmap.roadmap; 
-                if (roadmap.career_roadmap) roadmap = roadmap.career_roadmap;
-                if (roadmap.milestones) {
+                // Handle nested structure if present
+                if (roadmap.roadmap) roadmap = roadmap.roadmap;
+                
+                if (roadmap && roadmap.milestones) {
                     renderRoadmap(roadmap);
                     el('questionnaire-container').classList.add('hidden');
                 }
             }
         } else {
-            console.log("Guest mode");
             currentUserEmail = null;
             sessionExpirationTime = null;
             updateHeaderState();
         }
-    } catch (e) { console.error("Auth check failed", e); }
+    } catch (e) { 
+        console.error("Auth check failed:", e); 
+    }
 }
 
 async function handleLogin(e) {
     e.preventDefault();
-    const emailInput = el('email-input');
-    const otpInput = el('otp-input');
-    const btn = el('login-submit-btn');
-    const msg = el('login-msg');
-
-    const emailVal = emailInput.value.trim();
+    const emailVal = el('email-input').value.trim();
     if (!emailVal) return showCustomAlert('Error', 'Please enter a valid email.');
 
+    const btn = el('login-submit-btn');
+    btn.textContent = 'Verifying...';
     btn.disabled = true;
 
     try {
-        if (!isOtpSent) {
-            btn.textContent = 'Sending Code...';
-            const res = await fetch(`${WORKER_URL}/send-otp`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ email: emailVal })
-            });
-            
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to send code');
+        const res = await fetch(`${WORKER_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: emailVal }),
+            credentials: 'include'
+        });
 
-            isOtpSent = true;
-            el('step-email').classList.add('hidden');
-            el('step-otp').classList.remove('hidden');
-            msg.textContent = `Code sent to ${emailVal}. Check your inbox.`;
-            btn.textContent = 'Verify Code';
-            emailInput.disabled = true;
-            otpInput.focus();
+        if (!res.ok) throw new Error('Login failed');
 
-        } else {
-            const otpVal = otpInput.value.trim();
-            if(!otpVal) throw new Error("Please enter the code");
-
-            btn.textContent = 'Verifying...';
-            const res = await fetch(`${WORKER_URL}/verify-otp`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ email: emailVal, otp: otpVal }),
-                credentials: 'include'
-            });
-
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Invalid code');
-
-            currentUserEmail = data.email;
-            if (data.expiresAt) {
-                sessionExpirationTime = data.expiresAt;
-                startSessionTimer();
-            }
-            
-            updateHeaderState();
-            el('email-modal-overlay').classList.add('hidden');
-            el('info-modal-overlay').classList.add('hidden');
-            resetLoginModal();
-
-            if (currentRoadmap) {
-                await saveRoadmapToCloud();
-                showCustomAlert("Success", "Logged in & saved!");
-            } else {
-                await checkAuth();
-            }
+        const data = await res.json();
+        currentUserEmail = emailVal;
+        if (data.expiresAt) {
+            sessionExpirationTime = data.expiresAt;
+            startSessionTimer();
         }
+
+        updateHeaderState();
+        el('email-modal-overlay').classList.add('hidden');
+        el('info-modal-overlay').classList.add('hidden');
+
+        if (currentRoadmap) {
+            await saveRoadmapToCloud();
+            showCustomAlert("Success", "Your roadmap has been saved!");
+        } else {
+            await checkAuth();
+        }
+
     } catch (error) {
-        showCustomAlert('Login Error', error.message);
-        if(isOtpSent) btn.textContent = 'Verify Code';
-        else btn.textContent = 'Send Code';
+        showCustomAlert('Login Error', 'Could not verify email.');
     } finally {
+        btn.textContent = 'Login';
         btn.disabled = false;
     }
 }
 
-function resetLoginModal() {
-    isOtpSent = false;
-    el('step-email').classList.remove('hidden');
-    el('step-otp').classList.add('hidden');
-    el('email-input').disabled = false;
-    el('otp-input').value = '';
-    el('login-msg').textContent = "Enter email to receive a login code.";
-    el('login-submit-btn').textContent = "Send Code";
-}
-
 async function handleLogout() {
-    try { await fetch(`${WORKER_URL}/logout`, { method: 'POST', credentials: 'include' }); } 
-    catch (e) {} 
-    finally { location.reload(); }
+    try {
+        await fetch(`${WORKER_URL}/logout`, { method: 'POST', credentials: 'include' });
+    } catch (e) { console.error(e); }
+    finally {
+        location.reload();
+    }
 }
 
 async function saveRoadmapToCloud() {
@@ -426,42 +272,7 @@ function updateHeaderState() {
     }
 }
 
-function handleDownloadJson() {
-    if (!currentRoadmap) return;
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentRoadmap));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `roadmap_${currentUserEmail || 'guest'}.json`);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-    showCustomAlert("Downloaded!", "Save this file. Upload it later to restore progress.");
-}
-
-function handleRestore(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(event) {
-        try {
-            const jsonObj = JSON.parse(event.target.result);
-            if (!jsonObj.milestones) throw new Error("Invalid Roadmap File");
-            renderRoadmap(jsonObj);
-            el('restore-modal-overlay').classList.add('hidden');
-            el('questionnaire-container').classList.add('hidden');
-            if(currentUserEmail) {
-                saveRoadmapToCloud();
-                showCustomAlert("Restored!", "Your roadmap has been restored and saved.");
-            } else {
-                showCustomAlert("Restored!", "Roadmap loaded. Log in to save it.");
-            }
-        } catch (err) {
-            showCustomAlert("Error", "Invalid JSON file.");
-        }
-    };
-    reader.readAsText(file);
-}
-
+// --- GENERATION ---
 async function handleFormSubmit(e) {
     if(e) e.preventDefault();
     showLoadingWithProgress();
@@ -486,11 +297,14 @@ async function handleFormSubmit(e) {
 
         if (!res.ok) throw new Error('Generation failed');
 
-        const roadmap = await res.json();
-        // Guard against bad data
-        if (!roadmap || !roadmap.milestones) throw new Error("Invalid response structure");
+        let roadmap = await res.json();
         
-        recordGeneration();
+        // Ensure correct structure
+        if (!roadmap.milestones) {
+             if (roadmap.roadmap) roadmap = roadmap.roadmap;
+             else throw new Error("Invalid response structure");
+        }
+        
         renderRoadmap(roadmap);
         el('questionnaire-container').classList.add('hidden');
         if(currentUserEmail) saveRoadmapToCloud();
@@ -503,25 +317,159 @@ async function handleFormSubmit(e) {
     }
 }
 
+// --- RENDER (CLEANED: NO ANIMATIONS) ---
+function renderRoadmap(data) {
+    if (!data || !data.milestones) {
+        console.error("No milestones found", data);
+        return;
+    }
+
+    currentRoadmap = data;
+    el('roadmap-content').classList.remove('hidden');
+    
+    let html = `
+        <div class="mb-10 text-center animate-fade-in-scale-up">
+            <h1 class="text-3xl md:text-4xl font-bold mb-3" style="color: var(--text-primary)">${data.name}</h1>
+            <p class="text-lg max-w-3xl mx-auto" style="color: var(--text-secondary)">${data.summary}</p>
+        </div>
+    `;
+
+    html += `
+        <div class="mb-10 animate-fade-in-scale-up">
+            <div class="progress-floating-bar rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 backdrop-blur-md">
+                <div class="w-full md:flex-1">
+                    <div class="flex justify-between text-xs font-bold tracking-wider mb-2" style="color: var(--text-secondary)">
+                        <span>YOUR PROGRESS</span>
+                        <span id="progress-text" style="color: var(--accent-teal)">0%</span>
+                    </div>
+                    <div class="w-full h-2.5 rounded-full bg-gray-700 overflow-hidden">
+                        <div id="progress-bar-inner" class="h-full bg-teal-500 transition-all duration-500 shadow-[0_0_10px_rgba(20,184,166,0.5)]" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="flex gap-3 w-full md:w-auto justify-end">
+                    <button id="regenerate-btn-inner" class="btn-action px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-right"></i> New
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    html += `<div class="max-w-6xl mx-auto space-y-12 pb-20">`;
+    
+    data.milestones.forEach((phase, index) => {
+        // DEFENSIVE: Handle missing skills
+        const skills = phase.skills || [];
+        
+        html += `
+            <div class="animate-fade-in-scale-up">
+                <div class="flex items-center gap-3 mb-6 border-b pb-2" style="border-color: var(--border-color)">
+                    <div class="w-8 h-8 rounded-full bg-teal-500/10 text-teal-500 flex items-center justify-center font-bold text-sm border border-teal-500/20">${index + 1}</div>
+                    <h2 class="text-xl font-bold" style="color: var(--text-primary)">${phase.title}</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        `;
+
+        if (skills.length === 0) {
+            html += `<p class="text-gray-500 italic col-span-full">No detailed skills provided for this phase.</p>`;
+        } else {
+            skills.forEach((skill) => {
+                const isCompleted = skill.status === 'completed';
+                const iconClass = isCompleted ? 'fa-circle-check text-orange-500' : 'fa-circle text-gray-600';
+                const dotClass = isCompleted ? 'status-dot-orange' : 'status-dot-teal';
+                
+                html += `
+                <div class="skill-card p-5 rounded-xl cursor-pointer flex flex-col justify-between group ${isCompleted ? 'completed' : ''}" data-id="${skill.id}">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="font-semibold text-sm pr-2 group-hover:text-teal-500 transition-colors" style="color: var(--text-primary)">${skill.title}</h3>
+                        <i class="fa-regular ${iconClass} text-sm transition-colors"></i>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <span class="view-details-text text-[10px] uppercase tracking-wider font-bold opacity-0 group-hover:opacity-100 transition-opacity">View Details</span>
+                        <div class="status-dot w-2 h-2 rounded-full ${dotClass}"></div>
+                    </div>
+                </div>`;
+            });
+        }
+
+        html += `   </div>
+            </div>`;
+    });
+    html += '</div>';
+    
+    el('roadmap-grid-container').innerHTML = html;
+    
+    el('regenerate-btn-inner').addEventListener('click', () => {
+        el('roadmap-content').classList.add('hidden'); 
+        el('questionnaire-container').classList.remove('hidden'); 
+    });
+    
+    document.querySelectorAll('.skill-card').forEach(card => {
+        card.addEventListener('click', () => openSkillModal(card.dataset.id));
+    });
+
+    updateProgress();
+}
+
+function openSkillModal(id) {
+    if(!currentRoadmap) return;
+    let skill = null;
+    currentRoadmap.milestones.forEach(m => {
+        const found = (m.skills || []).find(s => s.id === id);
+        if(found) skill = found;
+    });
+    if(!skill) return;
+
+    el('modal-title').textContent = skill.title;
+    el('modal-description').textContent = skill.description;
+    
+    el('modal-details-grid').innerHTML = `
+        <div class="p-3 rounded-lg border" style="background-color: var(--bg-primary); border-color: var(--border-color)">
+            <div class="text-xs uppercase mb-1" style="color: var(--text-secondary)">Est. Salary</div>
+            <div class="font-bold" style="color: var(--text-primary)">${skill.salary_pkr}</div>
+        </div>
+        <div class="p-3 rounded-lg border" style="background-color: var(--bg-primary); border-color: var(--border-color)">
+            <div class="text-xs uppercase mb-1" style="color: var(--text-secondary)">Demand</div>
+            <div class="text-yellow-400 text-sm">${createStars(skill.future_growth_rating)}</div>
+        </div>
+    `;
+
+    const resources = skill.resources || [];
+    el('modal-resources').innerHTML = resources.length > 0 ? resources.map(r => 
+        `<li class="flex items-center justify-between p-2 rounded hover:bg-gray-700/10 transition-colors">
+            <span style="color: var(--text-primary)">${r.name}</span>
+            <a href="${r.url}" target="_blank" class="text-teal-500 hover:text-orange-500 transition-colors"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+        </li>`
+    ).join('') : '<li class="text-sm text-gray-500">No resources available</li>';
+
+    const btn = el('modal-complete-btn');
+    btn.onclick = () => toggleSkillComplete(skill.id);
+    
+    if(skill.status === 'completed') {
+        btn.textContent = 'Mark as Incomplete';
+        btn.className = 'w-full py-3 rounded-lg font-bold border-2 border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white transition-all';
+    } else {
+        btn.textContent = 'Mark as Completed';
+        btn.className = 'w-full py-3 rounded-lg font-bold btn-primary hover:shadow-lg transition-all';
+    }
+
+    el('skill-modal-overlay').classList.remove('hidden');
+}
+
+// --- SETUP LISTENERS ---
 function setupEventListeners() {
     el('login-btn-header').onclick = () => el('email-modal-overlay').classList.remove('hidden');
     el('logout-btn').onclick = handleLogout;
     el('info-login-btn').onclick = () => { el('info-modal-overlay').classList.add('hidden'); el('email-modal-overlay').classList.remove('hidden'); };
     el('info-close-btn').onclick = () => el('info-modal-overlay').classList.add('hidden');
-    el('email-cancel-btn').onclick = () => {
-        el('email-modal-overlay').classList.add('hidden');
-        resetLoginModal();
-    };
+    el('email-cancel-btn').onclick = () => el('email-modal-overlay').classList.add('hidden');
     el('modal-close-btn').onclick = () => el('skill-modal-overlay').classList.add('hidden');
     el('completion-close-btn').onclick = () => el('completion-modal-overlay').classList.add('hidden');
     
-    el('open-restore-btn').onclick = () => el('restore-modal-overlay').classList.remove('hidden');
-    el('restore-cancel-btn').onclick = () => el('restore-modal-overlay').classList.add('hidden');
-    el('restore-file-input').addEventListener('change', handleRestore);
-
     el('warning-dismiss-btn').onclick = () => el('session-warning-modal').classList.add('hidden');
 
-    el('login-form').addEventListener('submit', handleLogin);
+    el('email-form').addEventListener('submit', handleLogin);
     el('questionnaire-form').addEventListener('submit', handleFormSubmit);
     el('custom-alert-confirm-btn').onclick = hideCustomAlert;
     
@@ -540,33 +488,3 @@ function setupEventListeners() {
         updateThemeIcon(isLight);
     };
 }
-
-// --- MAIN (BOTTOM) ---
-document.addEventListener('DOMContentLoaded', async () => {
-    if (localStorage.getItem('theme') === 'light') {
-        document.documentElement.classList.add('light-mode');
-        updateThemeIcon(true);
-    } else {
-        updateThemeIcon(false);
-    }
-    
-    setTimeout(() => {
-        const ls = el('loading-screen');
-        if(ls) ls.classList.add('opacity-0', 'pointer-events-none');
-    }, 800);
-
-    await checkAuth();
-    
-    if(sessionExpirationTime) {
-        startSessionTimer();
-    }
-
-    if (!currentUserEmail && !localStorage.getItem('visitedBefore')) {
-        setTimeout(() => {
-            el('info-modal-overlay').classList.remove('hidden');
-            localStorage.setItem('visitedBefore', 'true');
-        }, 1500);
-    }
-
-    setupEventListeners();
-});

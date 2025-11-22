@@ -194,10 +194,10 @@ function renderRoadmap(data) {
         </div>
     `;
 
-    // 2. Floating Progress Bar (Sticky within container)
-    // Note: 'top-20' ensures it sits below the main fixed header
+    // 2. Floating Progress Bar (FIXED: NON-STICKY)
+    // Removed 'sticky' and 'top-20' classes. It is now relative and flows with content.
     html += `
-        <div class="sticky top-20 z-30 mb-10 animate-fade-in-scale-up">
+        <div class="mb-10 animate-fade-in-scale-up">
             <div class="progress-floating-bar rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 backdrop-blur-md">
                 <div class="w-full md:flex-1">
                     <div class="flex justify-between text-xs font-bold tracking-wider mb-2" style="color: var(--text-secondary)">

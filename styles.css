@@ -11,6 +11,7 @@
     --accent-teal: #14b8a6;
     --accent-orange: #f59e0b;
     --accent-orange-glow: rgba(245, 158, 11, 0.4);
+    --accent-teal-glow: rgba(20, 184, 166, 0.3);
     
     --header-bg: rgba(2, 6, 23, 0.95);
     --shadow-color: rgba(0, 0, 0, 0.5);
@@ -60,7 +61,6 @@ div, p, h1, h2, h3, button, input, select, header, .skill-card {
     background-color: var(--header-bg);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border-color);
-    /* Smoother ease-out transition for header movement */
     transition: transform 0.4s cubic-bezier(0.215, 0.610, 0.355, 1), background-color 0.3s ease; 
 }
 #main-header.hidden-header { 
@@ -68,10 +68,9 @@ div, p, h1, h2, h3, button, input, select, header, .skill-card {
 }
 
 /* --- SCROLL REVEAL ANIMATION --- */
-/* Class added by JS IntersectionObserver */
 .reveal-on-scroll {
     opacity: 0;
-    transform: translateY(40px); /* Starts lower */
+    transform: translateY(40px); 
     transition: opacity 0.8s ease-out, transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     will-change: opacity, transform;
 }
@@ -108,7 +107,7 @@ div, p, h1, h2, h3, button, input, select, header, .skill-card {
     border: 1px solid transparent;
 }
 
-/* --- CARDS --- */
+/* --- CARDS & COLOR LOGIC --- */
 .skill-card {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
@@ -117,19 +116,52 @@ div, p, h1, h2, h3, button, input, select, header, .skill-card {
     z-index: 1;
     cursor: pointer;
 }
+
+/* GREEN TYPE: Incomplete (Active) Cards */
 .skill-card:not(.completed):hover {
     transform: translateY(-6px);
-    border-color: var(--accent-teal);
-    box-shadow: 0 12px 30px -5px rgba(20, 184, 166, 0.15);
+    border-color: var(--accent-teal); /* Green/Teal Border */
+    box-shadow: 0 12px 30px -5px var(--accent-teal-glow); /* Green/Teal Glow */
 }
+.skill-card:not(.completed) .view-details-text {
+    color: var(--accent-teal);
+}
+
+/* ORANGE TYPE: Completed Cards */
 .skill-card.completed {
-    border-color: var(--accent-orange) !important;
+    border-color: var(--accent-orange) !important; /* Orange Border */
     background: linear-gradient(to bottom right, rgba(245, 158, 11, 0.08), transparent);
 }
 .skill-card.completed:hover {
     transform: translateY(-4px);
-    box-shadow: 0 0 15px var(--accent-orange-glow);
+    box-shadow: 0 0 20px var(--accent-orange-glow); /* Orange Glow */
 }
+.skill-card.completed .view-details-text {
+    color: var(--accent-orange);
+}
+
+/* --- PULSING DOTS --- */
+@keyframes pulseTeal {
+    0% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(20, 184, 166, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0); }
+}
+@keyframes pulseOrange {
+    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+.status-dot-teal {
+    background-color: var(--accent-teal);
+    animation: pulseTeal 2s infinite;
+}
+.status-dot-orange {
+    background-color: var(--accent-orange);
+    /* Completed doesn't need to pulse as aggressively, just glow */
+    box-shadow: 0 0 8px var(--accent-orange); 
+}
+
 
 /* --- MODALS --- */
 .modal-overlay {
@@ -166,28 +198,4 @@ input, select {
 input:focus, select:focus {
     border-color: var(--accent-teal) !important;
     outline: none;
-}
-
-/* --- PDF SPECIFIC STYLES (Used in the generated HTML string) --- */
-.pdf-container {
-    font-family: 'Inter', sans-serif;
-    color: #111;
-    background: #fff;
-    padding: 40px;
-}
-.pdf-header {
-    border-bottom: 2px solid #14b8a6;
-    padding-bottom: 20px;
-    margin-bottom: 30px;
-}
-.pdf-phase {
-    margin-bottom: 30px;
-    page-break-inside: avoid;
-}
-.pdf-skill-item {
-    margin-bottom: 10px;
-    padding: 10px;
-    background: #f8fafc;
-    border-radius: 6px;
-    border: 1px solid #e2e8f0;
 }
